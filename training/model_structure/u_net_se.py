@@ -44,11 +44,11 @@ class SEBlock(nn.Module):
         # Scale (Channel Recalibration)
         return x * y.expand_as(x)
 
-class UNetDilationSE(nn.Module):
+class UNetSE(nn.Module):
     def __init__(self, in_channels=4, out_channels=2, features=[64, 128, 256, 512],
                 reduction=16, num_classes=None): # num_classes is unused here, renamed out_channels
         super().__init__()
-        self.model_name = "U-Net_DilationSENet"
+        self.model_name = "U-Net_SENet"
         # Determine the number of classes, default to 2 if not provided
         if num_classes is not None:
             out_channels = num_classes
@@ -59,7 +59,7 @@ class UNetDilationSE(nn.Module):
         prev_ch = in_channels
         for i, f in enumerate(features):
             # Using your provided dilated_block for the encoder
-            self.downs.append(dilated_block(prev_ch, f, dilation=2))
+            self.downs.append(conv_block(prev_ch, f))
             self.pools.append(nn.MaxPool2d(kernel_size=2, stride=2))
             prev_ch = f
 

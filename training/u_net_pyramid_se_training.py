@@ -9,7 +9,7 @@ from datetime import datetime
 
 from training_helper import train_model, save_checkpoint
 from data_helper import BRATSDataset2D, get_data_ids
-from model_structure import UNet, UNetDilationSE, UNetFPN
+from model_structure import UNet, UNetBiPyramid, HybridLoss, UNetBiPyramidSE
 from torch.utils.data import DataLoader, random_split
 
 
@@ -25,7 +25,7 @@ parser.add_argument(
 parser.add_argument(
     '--batch_size',
     type=int,
-    default=32,
+    default=16,
     help=f"Batch size for DataLoader (default: 32)"
 )
 parser.add_argument(
@@ -110,8 +110,8 @@ val_loader = DataLoader(
     num_workers=NUM_WORKERS, pin_memory=True
 )
 
-model = UNetDilationSE(in_channels=4, num_classes=NUM_CLASSES)
-criterion = nn.CrossEntropyLoss()
+model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES)
+criterion = HybridLoss(NUM_CLASSES)
 optimizer = optim.Adam(model.parameters(), lr=LR)
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')

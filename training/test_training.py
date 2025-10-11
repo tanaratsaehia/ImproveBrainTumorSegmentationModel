@@ -9,7 +9,7 @@ from datetime import datetime
 
 from training_helper import train_model, save_checkpoint
 from data_helper import BRATSDataset2D, get_data_ids
-from model_structure import UNet, UNetDilationSE, UNetFPN
+from model_structure import UNet, UNetDilationSE, UNetBiPyramid
 from torch.utils.data import DataLoader, random_split
 
 

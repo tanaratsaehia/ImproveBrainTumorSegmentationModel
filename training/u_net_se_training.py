@@ -9,7 +9,7 @@ from datetime import datetime
 
 from training_helper import train_model, save_checkpoint
 from data_helper import BRATSDataset2D, get_data_ids
-from model_structure import UNet, UNetBiPyramid, HybridLoss
+from model_structure import UNet, UNetSE, UNetBiPyramid, HybridLoss
 from torch.utils.data import DataLoader, random_split
 
 
@@ -110,7 +110,7 @@ val_loader = DataLoader(
     num_workers=NUM_WORKERS, pin_memory=True
 )
 
-model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+model = UNetSE(in_channels=4, num_classes=NUM_CLASSES)
 criterion = HybridLoss(NUM_CLASSES)
 optimizer = optim.Adam(model.parameters(), lr=LR)
 TRAIN_RESULT_PATH = 'training_results'
