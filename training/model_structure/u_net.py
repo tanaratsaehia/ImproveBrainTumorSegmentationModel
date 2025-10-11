@@ -18,6 +18,7 @@ class UNet(nn.Module):
         if num_classes is not None:
             out_channels = num_classes
         # Encoder
+        self.model_name = "U-Net"
         self.downs = nn.ModuleList()
         self.pools = nn.ModuleList()
         prev_ch = in_channels

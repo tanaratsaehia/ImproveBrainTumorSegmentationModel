@@ -1,22 +1,45 @@
 import subprocess
 import sys
 import importlib.util
+import importlib
 
 def install_package(package_names):
-    """Checks if a package is installed and installs it if not."""
+    """
+    Checks if a package is installed, installs it if not, and ensures it's 
+    imported into the current environment if the installation succeeds.
+    
+    Returns True if all packages are ready, False otherwise.
+    """
+    all_ready = True
     for package_name in package_names:
+        # 1. Check if package is already installed/available
         spec = importlib.util.find_spec(package_name)
+        
         if spec is None:
             print(f"{package_name} not found. Installing now...")
             try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+                # 2. Install the package using the current Python environment's pip
+                subprocess.check_call([sys.executable, "-m", "pip", "install", package_name], 
+                                      stdout=sys.stdout, stderr=sys.stderr)
                 print(f"{package_name} successfully installed.")
+                
+                # 3. CRITICAL FIX: Reload the spec and dynamically import the module
+                #    This makes the newly installed package available to the current process.
+                spec = importlib.util.find_spec(package_name)
+                if spec:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    # Add the module to sys.modules so subsequent 'import nibabel' works
+                    sys.modules[package_name] = module 
+                    print(f"Successfully loaded {package_name} into current environment.")
+                else:
+                    print(f"ERROR: Installation succeeded, but failed to load {package_name}.")
+                    all_ready = False
+                    
             except subprocess.CalledProcessError as e:
                 print(f"Failed to install {package_name}. Error: {e}")
-                # sys.exit(1)
+                all_ready = False
         else:
             print(f"{package_name} is already installed.")
-
-# install_package(["nibabel"])
-# import nibabel
-# print(f"NiBabel version: {nibabel.__version__}")
+            
+    return all_ready

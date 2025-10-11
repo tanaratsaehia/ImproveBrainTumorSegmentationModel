@@ -28,6 +28,7 @@ class UNetFPN(nn.Module):
     def __init__(self, in_channels=4, out_channels=2, num_classes=None, features=[64,128,256,512],
                     fpn_channels=128, use_concat=True):
         super().__init__()
+        self.model_name = "U-Net_FeaturePyramid"
         if num_classes is not None:
             out_channels = num_classes
         self.use_concat = use_concat

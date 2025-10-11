@@ -48,7 +48,7 @@ class UNetDilationSE(nn.Module):
     def __init__(self, in_channels=4, out_channels=2, features=[64, 128, 256, 512],
                 reduction=16, num_classes=None): # num_classes is unused here, renamed out_channels
         super().__init__()
-        
+        self.model_name = "U-Net_DilationSENet"
         # Determine the number of classes, default to 2 if not provided
         if num_classes is not None:
             out_channels = num_classes

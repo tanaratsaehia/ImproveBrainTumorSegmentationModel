@@ -1,6 +1,7 @@
 import pandas as pd
 import time
 import torch
+from datetime import datetime
 
 def dice_coef(preds, targets, num_classes, smooth=1e-6):
     """
@@ -56,7 +57,7 @@ def iou_metric(preds, targets, num_classes, smooth=1e-6):
     return iou_sum / num_classes
 
 def train_model(model, criterion, optimizer, train_loader, val_loader, 
-                num_epochs, num_classes, device):
+                num_epochs, num_classes, device, start_epoch):
     """
     Trains and validates the segmentation model, tracking metrics per epoch.
 
@@ -74,10 +75,13 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         pandas.DataFrame: DataFrame containing epoch-wise metrics.
     """
     metrics_history = []
+    num_epochs = start_epoch + num_epochs
+    print(f"Starting training on {device} for {num_epochs-start_epoch} epochs...")
     
-    print(f"Starting training on {device} for {num_epochs} epochs...")
-
-    for epoch in range(1, num_epochs + 1):
+    # Get total number of batches for the progress display
+    total_batches = len(train_loader)
+    
+    for epoch in range(start_epoch,  num_epochs):
         start_time = time.time()
         
         # ------------------- TRAINING PHASE -------------------
@@ -87,7 +91,8 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         running_iou = 0.0
         num_batches_train = 0
         
-        for imgs, masks in train_loader:
+        # Use enumerate to get the batch index (idx)
+        for idx, (imgs, masks) in enumerate(train_loader):
             imgs, masks = imgs.to(device), masks.to(device)
             
             # Remap label '4' -> '3' for 4 classes (0, 1, 2, 3)
@@ -101,10 +106,22 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             optimizer.step()
             
             # Accumulate metrics
-            running_loss += loss.item()
+            current_loss = loss.item() # Get loss for immediate reporting
+            running_loss += current_loss
             running_dice += dice_coef(outputs, masks, num_classes)
             running_iou += iou_metric(outputs, masks, num_classes)
             num_batches_train += 1
+
+            if (idx + 1) % 6 == 0 or (idx + 1) == total_batches:
+                # Calculate the average loss up to the current batch
+                avg_running_loss = running_loss / num_batches_train
+                
+                print(
+                    f"  [Epoch {epoch}/{num_epochs-1} | Batch {idx + 1}/{total_batches}] "
+                    f"Batch Loss: {current_loss:.4f} | Avg. Train Loss: {avg_running_loss:.4f}"
+                )
+            # ---------------------------------------------
+
 
         train_loss = running_loss / num_batches_train
         train_dice = running_dice / num_batches_train
@@ -139,9 +156,11 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         
         epoch_time = time.time() - start_time
 
-        print(f"Epoch {epoch:02d}/{num_epochs} | Time: {epoch_time:.2f}s")
-        print(f"  Train: Loss={train_loss:.4f}, Dice={train_dice:.4f}, IoU={train_iou:.4f}")
-        print(f"  Val:   Loss={val_loss:.4f}, Dice={val_dice:.4f}, IoU={val_iou:.4f}")
+        print("-" * 50)
+        print(f"Epoch {epoch}/{num_epochs-1} Complete | Time: {epoch_time:.2f}s")
+        print(f"  Train Metrics: Loss={train_loss:.4f}, Dice={train_dice:.4f}, IoU={train_iou:.4f}")
+        print(f"  Val Metrics:   Loss={val_loss:.4f}, Dice={val_dice:.4f}, IoU={val_iou:.4f}")
+        print("-" * 50)
         
         # Store results
         metrics_history.append({
@@ -155,3 +174,15 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             'time': epoch_time
         })
     return pd.DataFrame(metrics_history)
+
+def save_checkpoint(model, optimizer, epoch, path, val_loss=None):
+    """Saves the essential components needed to resume training."""
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'val_loss': val_loss,
+        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    torch.save(checkpoint, path)
+    print(f"\nCheckpoint saved to {path} (Completed Epoch: {epoch})")
