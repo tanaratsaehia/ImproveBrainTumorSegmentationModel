@@ -23,29 +23,7 @@ def dilated_block(in_ch, out_ch, dilation=2):
         nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True)
     )
 
-class SEBlock(nn.Module):
-    """
-    Squeeze-and-Excitation Block for channel-wise attention.
-    """
-    def __init__(self, channel, reduction=16):
-        super().__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, channel // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(channel // reduction, channel, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
-
-# --- New Model Definition: FPU-Net with Dilation and SE ---
-
-class UNetBiPyramidSE(nn.Module):
+class UNetBiPyramidDi(nn.Module):
     """
     Feature Pyramid U-Net (FPU-Net) enhanced with Dilated Convolutions (Encoder)
     and Squeeze-and-Excitation Blocks (Decoder - on P features).
@@ -53,14 +31,14 @@ class UNetBiPyramidSE(nn.Module):
     def __init__(self, in_channels=4, out_channels=2, num_classes=None, features=[64, 128, 256, 512],
                     fpn_channels=128, reduction=16):
         super().__init__()
-        self.model_name = "FPU-Net_SEDilation_"
+        self.model_name = "FPU-Net_Dilation_"
         if num_classes is not None:
             out_channels = num_classes
         self.features = features
         self.fpn_channels = fpn_channels
         
         # Dilations for C1, C2, C3, C4
-        self.dilations = [1, 2, 1, 2] # -> 1 1 2 3 | 1 2 1 2 
+        self.dilations = [1, 1, 2, 3] # -> 1 1 2 3 | 1 2 1 2 
         self.model_name = self.model_name + ''.join(str(n) for n in self.dilations)
         
         # C-channels: C1..C4, C5 (bottleneck)
@@ -95,7 +73,6 @@ class UNetBiPyramidSE(nn.Module):
                 nn.Conv2d(fpn_channels, fpn_channels, kernel_size=3, padding=1),
                 nn.BatchNorm2d(fpn_channels),
                 nn.ReLU(inplace=True),
-                SEBlock(fpn_channels, reduction=reduction) # SE Block after smoothing
             ))
 
         # ---------------- 3. OUTPUT HEAD ----------------

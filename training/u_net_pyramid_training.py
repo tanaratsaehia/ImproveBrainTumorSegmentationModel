@@ -150,7 +150,7 @@ report = train_model(
     num_classes=NUM_CLASSES
 )
 
-final_completed_epoch = start_epoch + NUM_EPOCHS
+final_completed_epoch = start_epoch + NUM_EPOCHS -1
 save_checkpoint(
     model, 
     optimizer, 
@@ -161,7 +161,8 @@ save_checkpoint(
 now = datetime.now()
 timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
 csv_file_name = f'{model.model_name}_{final_completed_epoch}epochs_{timestamp}.csv'
-report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'report', csv_file_name), index=False)
+os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
+report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
 
 # BraTS-Datasets/BraTS-10file-2per
 # BraTS-Datasets/BraTS-25file-5per

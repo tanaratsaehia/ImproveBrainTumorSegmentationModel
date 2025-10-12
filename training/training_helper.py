@@ -186,3 +186,69 @@ def save_checkpoint(model, optimizer, epoch, path, val_loss=None):
     }
     torch.save(checkpoint, path)
     print(f"\nCheckpoint saved to {path} (Completed Epoch: {epoch})")
+
+def test_model(model, criterion, test_loader, num_classes, device):
+    """
+    Evaluates the segmentation model on a test/validation dataset.
+
+    Args:
+        model (nn.Module): The trained segmentation model.
+        criterion (nn.Module): Loss function (e.g., HybridLoss).
+        test_loader (DataLoader): DataLoader for the testing dataset.
+        num_classes (int): Number of segmentation classes (e.g., 4).
+        device (torch.device): Device to run the model on ('cuda' or 'cpu').
+
+    Returns:
+        pandas.DataFrame: DataFrame containing the final testing metrics.
+    """
+    print(f"--- Starting Final Testing on {device} ---")
+    
+    # Set the model to evaluation mode
+    model.eval()
+    
+    test_loss = 0.0
+    test_dice = 0.0
+    test_iou = 0.0
+    num_batches_test = 0
+    start_time = time.time()
+    
+    with torch.no_grad():
+        for imgs, masks in test_loader:
+            imgs, masks = imgs.to(device), masks.to(device)
+            
+            # Remap label '4' -> '3', consistent with training/validation
+            masks = masks.clone()
+            masks[masks == 4] = 3
+            
+            outputs = model(imgs)
+            
+            # Calculate loss and accumulate
+            test_loss += criterion(outputs, masks).item()
+            
+            # Accumulate metrics
+            test_dice += dice_coef(outputs, masks, num_classes)
+            test_iou += iou_metric(outputs, masks, num_classes)
+            num_batches_test += 1
+
+    # Calculate final average metrics
+    avg_test_loss = test_loss / num_batches_test
+    avg_test_dice = test_dice / num_batches_test
+    avg_test_iou = test_iou / num_batches_test
+    
+    test_time = time.time() - start_time
+
+    print("-" * 50)
+    print(f"Testing Complete | Total Time: {test_time:.2f}s")
+    print(f"  Final Metrics: Loss={avg_test_loss:.4f}, Dice={avg_test_dice:.4f}, IoU={avg_test_iou:.4f}")
+    print("-" * 50)
+    
+    # Store results in a DataFrame
+    test_metrics = pd.DataFrame([{
+        'model_name': model.model_name,
+        'loss': avg_test_loss,
+        'dice': avg_test_dice,
+        'iou': avg_test_iou,
+        'time': test_time
+    }])
+    
+    return test_metrics
