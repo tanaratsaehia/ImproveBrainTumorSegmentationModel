@@ -7,7 +7,7 @@ import pandas as pd # To handle the test report output
 
 # --- Assume these are imported from their respective files ---
 from data_helper import BRATSDataset2D, get_data_ids
-from model_structure import UNet, UNetSE, UNetBiPyramid, UNetBiPyramidSE, HybridLoss # The exact model class used for training
+from model_structure import UNet, UNetSE, UNetBiPyramid, UNetBiPyramidSE, HybridLoss, UNetBiPyramidDi # The exact model class used for training
 from training_helper import test_model # The test function and combined loss
 # Assume dice_coef and iou_metric are accessible if needed in this script, 
 # but they are primarily used inside test_model.
@@ -31,6 +31,8 @@ def main(args):
         model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES)
     elif args.model_name == 'u_net_pyramid_se':
         model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES)
+    elif args.model_name == 'u_net_pyramid_di':
+        model = UNetBiPyramidDi(in_channels=4, num_classes=NUM_CLASSES)
     else:
         raise("model name not correct")
     print(f'Testing model {model.model_name}')

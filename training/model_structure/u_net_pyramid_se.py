@@ -60,7 +60,7 @@ class UNetBiPyramidSE(nn.Module):
         self.fpn_channels = fpn_channels
         
         # Dilations for C1, C2, C3, C4
-        self.dilations = [1, 2, 1, 2] # -> 1 1 2 3 | 1 2 1 2 
+        self.dilations = [1, 1, 2, 3] # -> 1 1 2 3 | 1 2 1 2 
         self.model_name = self.model_name + ''.join(str(n) for n in self.dilations)
         
         # C-channels: C1..C4, C5 (bottleneck)
