@@ -1,2 +1,2 @@
-project for CP413706 Research Methodology
+Repository for CP413706 Research Methodology and CP414781 Research Project in Artificial Intelligence I <br>
 google drive: https://drive.google.com/drive/folders/1yVRwMxG_GoX4iFOnyu-7fjXdwzpETJsP?usp=sharing
