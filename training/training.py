@@ -3,18 +3,24 @@ import sys
 import torch
 import argparse
 import torch.nn as nn
-import multiprocessing
 import torch.optim as optim
 from datetime import datetime
 
-from training_helper import train_model, save_checkpoint
-from data_helper import BRATSDataset2D, get_data_ids
-from model_structure import UNet, UNetBiPyramid, HybridLoss
+from utils.training_helper import train_model, save_checkpoint
+from utils.data_helper import BRATSDataset2D, get_data_ids
+from model_structure import *
 from torch.utils.data import DataLoader, random_split
 
 
+# ----------------------------------- Running Arguments -----------------------------------
 parser = argparse.ArgumentParser(
     description="2D BraTS Segmentation Training Script."
+)
+parser.add_argument(
+    'model_name',
+    type=str,
+    choices=["u_net", "u_net_se", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"],
+    help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
     '--data_dir',
@@ -38,7 +44,7 @@ parser.add_argument(
     '--epochs',
     type=int,
     default=25,
-    help=f"Number of training epochs (default: 1)"
+    help=f"Number of training epochs (default: 25)"
 )
 parser.add_argument(
     '--val_split',
@@ -62,14 +68,14 @@ args = parser.parse_args()
 SLICE_INDICES= list(range(150))
 
 # Hyperparameters derived from arguments
+MODEL_NAME   = args.model_name
 ROOT_DIR     = os.path.join('BraTS-Datasets', args.data_dir)
 BATCH_SIZE   = args.batch_size
 LR           = args.lr
 NUM_EPOCHS   = args.epochs
 VAL_SPLIT    = args.val_split
 NUM_CLASSES  = args.num_classes
-
-NUM_WORKERS  = 2 # min(multiprocessing.cpu_count(), 4) if multiprocessing.cpu_count() > 1 else 0
+NUM_WORKERS  = 2
 DEVICE       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"--- Configuration ---")
@@ -81,13 +87,15 @@ print(f"Validation Split: {VAL_SPLIT}")
 print(f"Device: {DEVICE}")
 print(f"Num Workers: {NUM_WORKERS}")
 print(f"Num Classes: {NUM_CLASSES}")
+print(f"Training device: {DEVICE}")
 print(f"---------------------")
 
+
+# ----------------------------------- Data preparation -----------------------------------
 if not os.path.isdir(ROOT_DIR):
     sys.exit(f"Error: Directory not found at {ROOT_DIR}")
 
 SUBJECT_IDS = get_data_ids(ROOT_DIR)
-
 full_dataset = BRATSDataset2D(
     root_dir    = ROOT_DIR,
     subject_ids = SUBJECT_IDS,
@@ -106,24 +114,36 @@ train_loader = DataLoader(
     num_workers=NUM_WORKERS, pin_memory=True
 )
 val_loader = DataLoader(
-    val_ds,   batch_size=BATCH_SIZE, shuffle=False,
+    val_ds, batch_size=BATCH_SIZE, shuffle=False,
     num_workers=NUM_WORKERS, pin_memory=True
 )
 
-model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+
+# ----------------------------------- Create Model -----------------------------------
+# model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+# ["u_net", "u_net_se", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"]
+model = None
+if MODEL_NAME == "u_net":
+    model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_se":
+    model = UNetSE(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "pyramid":
+    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "pyramid_se":
+    
 criterion = HybridLoss(NUM_CLASSES)
 optimizer = optim.Adam(model.parameters(), lr=LR)
+
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-CHECKPOINT_FILENAME = 'last_checkpoint.pth'
-CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, CHECKPOINT_FILENAME)
-start_epoch = 1
+LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'last_checkpoint.pth')
 
-if args.resume and os.path.exists(CHECKPOINT_PATH):
-    print(f"\nResuming training from {CHECKPOINT_PATH}...")
+start_epoch = 1
+if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
+    print(f"\nResuming training from {LAST_CHECKPOINT_PATH}...")
     try:
-        checkpoint = torch.load(CHECKPOINT_PATH, map_location=DEVICE)
+        checkpoint = torch.load(LAST_CHECKPOINT_PATH, map_location=DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         for state in optimizer.state.values():
@@ -136,8 +156,8 @@ if args.resume and os.path.exists(CHECKPOINT_PATH):
         print(f"Error loading checkpoint: {e}. Starting from scratch.")
         start_epoch = 1
 
+# ----------------------------------- Training -----------------------------------
 model.to(DEVICE)
-
 report = train_model(
     model=model,
     train_loader=train_loader,
@@ -155,7 +175,7 @@ save_checkpoint(
     model, 
     optimizer, 
     epoch=final_completed_epoch, 
-    path=CHECKPOINT_PATH,
+    path=LAST_CHECKPOINT_PATH,
 )
 
 now = datetime.now()

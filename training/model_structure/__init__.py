@@ -1,8 +1,8 @@
 from .u_net_se import UNetSE
-from .u_net_pyramid import UNetBiPyramid
+from .u_net_bipyramid import UNetBiPyramid
 from .u_net import UNet
-from .u_net_pyramid_se import UNetBiPyramidSE
+from .u_net_bipyramid_se import UNetBiPyramidSE
 from .hybrid_loss import HybridLoss
-from .u_net_pyramid_di import UNetBiPyramidDi
+# from .u_net_pyramid_di import UNetBiPyramidDi
 
 __version__ = "1.0.0"

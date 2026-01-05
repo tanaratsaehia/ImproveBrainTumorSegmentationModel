@@ -1,0 +1,9 @@
+
+1.update model structure to present
+    1.1 currently modify u_net_bipyramid_di.py not finish yet
+    1.2 must be add another file for u_net_di.py for fully separatly
+2.update training code
+3.add mlflow to tracking
+    3.1 config mlflow server
+    3.2 add to training code
+4.test run training

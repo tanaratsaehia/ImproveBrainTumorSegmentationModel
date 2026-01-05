@@ -43,3 +43,7 @@ def install_package(package_names):
             print(f"{package_name} is already installed.")
             
     return all_ready
+
+if __name__ == "__main__":
+    packages = ['mlflow']
+    install_package(packages)
