@@ -120,10 +120,9 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             running_iou += iou_metric(outputs, masks, num_classes)
             num_batches_train += 1
 
-            if (idx + 1) % 10 == 0 or (idx + 1) == total_batches:
+            if (idx + 1) % 100 == 0 or (idx + 1) == total_batches:
                 # Calculate the average loss up to the current batch
                 avg_running_loss = running_loss / num_batches_train
-                
                 print(
                     f"  [Epoch {epoch}/{num_epochs-1} | Batch {idx + 1}/{total_batches}] "
                     f"Batch Loss: {current_loss:.4f} | Avg. Train Loss: {avg_running_loss:.4f}"
@@ -171,7 +170,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         print(f"  Train Metrics: Loss={train_loss:.4f}, Dice={train_dice:.4f}, IoU={train_iou:.4f}")
         print(f"  Val Metrics:   Loss={val_loss:.4f}, Dice={val_dice:.4f}, IoU={val_iou:.4f}")
         if val_dice > best_dice:
-            print(f"Validate Dice improved from {best_dice} to {val_dice}")
+            print(f"Validate Dice improved from {best_dice:.4f} to {val_dice:.4f}")
             print(f"Save new best model to '{best_save_path}'")
             best_dice = val_dice
             save_checkpoint(model, optimizer, epoch, best_save_path, val_loss)
@@ -210,7 +209,7 @@ def save_checkpoint(model, optimizer, epoch, path, val_loss=None):
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     torch.save(checkpoint, path)
-    print(f"\nCheckpoint saved to {path} (Completed Epoch: {epoch})")
+    # print(f"\nCheckpoint saved to {path} (Completed Epoch: {epoch})")
 
 def test_model(model, criterion, test_loader, num_classes, device):
     """

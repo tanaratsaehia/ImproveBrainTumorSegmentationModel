@@ -27,13 +27,13 @@ parser.add_argument(
 parser.add_argument(
     '--data_dir',
     type=str,
-    default='BraTS-10file-2per',
+    default='BraTS-96file-20per-train',
     help="Path to the root directory containing the BraTS datasets."
 )
 parser.add_argument(
     '--batch_size',
     type=int,
-    default=16,
+    default=32,
     help=f"Batch size for DataLoader (default: 32)"
 )
 parser.add_argument(
@@ -63,8 +63,8 @@ parser.add_argument(
 parser.add_argument(
     '--val_split',
     type=float,
-    default=0.2,
-    help=f"Fraction of data to use for validation (default: 0.2)"
+    default=0.25,
+    help=f"Fraction of data to use for validation (default: 0.25)"
 )
 parser.add_argument(
     '--num_classes',
@@ -80,8 +80,8 @@ parser.add_argument(
 parser.add_argument(
     '--patience',
     type=int,
-    default=10,
-    help="Patience for early stoping."
+    default=5,
+    help="Patience for early stoping (default 5)."
 )
 
 args = parser.parse_args()
@@ -102,7 +102,7 @@ NUM_WORKERS   = 2
 DEVICE        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"\n\n----- Configuration -----")
-print(f"Root Directory: {ROOT_DIR}")
+print(f"Root data directory: {ROOT_DIR}")
 print(f"Batch Size: {BATCH_SIZE}")
 print(f"Learning Rate: {LR}")
 print(f"Epochs: {NUM_EPOCHS}")
@@ -112,8 +112,6 @@ print(f"Device: {DEVICE}")
 print(f"Num Workers: {NUM_WORKERS}")
 print(f"Num Classes: {NUM_CLASSES}")
 print(f"Training device: {DEVICE}")
-
-
 
 # ----------------------------------- Data preparation -----------------------------------
 if not os.path.isdir(ROOT_DIR):

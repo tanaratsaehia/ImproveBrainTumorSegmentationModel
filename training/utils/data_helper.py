@@ -1,5 +1,5 @@
 import os
-from install_lib import install_package
+from .install_lib import install_package
 install_package(["nibabel"])
 import nibabel as nib
 import numpy as np
