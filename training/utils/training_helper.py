@@ -57,7 +57,8 @@ def iou_metric(preds, targets, num_classes, smooth=1e-6):
     return iou_sum / num_classes
 
 def train_model(model, criterion, optimizer, train_loader, val_loader, 
-                num_epochs, num_classes, device, start_epoch):
+                num_epochs, num_classes, device, start_epoch, start_run_time, 
+                best_save_path, last_save_path, patience=10):
     """
     Trains and validates the segmentation model, tracking metrics per epoch.
 
@@ -70,18 +71,25 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         num_epochs (int): Total number of epochs to train for.
         num_classes (int): Number of segmentation classes (e.g., 4).
         device (torch.device): Device to run the model on ('cuda' or 'cpu').
+        start_run_time (float): Start time to stop before hit gpu wall time.
+        best_save_path (str): Path to save best model.
+        last_save_path (str): Path to save last model.
+
 
     Returns:
         pandas.DataFrame: DataFrame containing epoch-wise metrics.
     """
+    LIMIT_TIME_IN_SECONDS = (2 * 3600) + (45 * 60) # 2h 45m
     metrics_history = []
     num_epochs = start_epoch + num_epochs
     print(f"Starting training on {device} for {num_epochs-start_epoch} epochs...")
     
     # Get total number of batches for the progress display
     total_batches = len(train_loader)
+    best_dice = float('-inf')
+    epoch_not_improve_couter = 0
     
-    for epoch in range(start_epoch,  num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         start_time = time.time()
         
         # ------------------- TRAINING PHASE -------------------
@@ -112,7 +120,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             running_iou += iou_metric(outputs, masks, num_classes)
             num_batches_train += 1
 
-            if (idx + 1) % 6 == 0 or (idx + 1) == total_batches:
+            if (idx + 1) % 10 == 0 or (idx + 1) == total_batches:
                 # Calculate the average loss up to the current batch
                 avg_running_loss = running_loss / num_batches_train
                 
@@ -120,7 +128,9 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
                     f"  [Epoch {epoch}/{num_epochs-1} | Batch {idx + 1}/{total_batches}] "
                     f"Batch Loss: {current_loss:.4f} | Avg. Train Loss: {avg_running_loss:.4f}"
                 )
-            # ---------------------------------------------
+            if time.time() - start_run_time > LIMIT_TIME_IN_SECONDS:
+                print(f"\n\nStop training before hit wall time at {epoch} epoch.")
+                return pd.DataFrame(metrics_history)
 
 
         train_loss = running_loss / num_batches_train
@@ -160,6 +170,15 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         print(f"Epoch {epoch}/{num_epochs-1} Complete | Time: {epoch_time:.2f}s")
         print(f"  Train Metrics: Loss={train_loss:.4f}, Dice={train_dice:.4f}, IoU={train_iou:.4f}")
         print(f"  Val Metrics:   Loss={val_loss:.4f}, Dice={val_dice:.4f}, IoU={val_iou:.4f}")
+        if val_dice > best_dice:
+            print(f"Validate Dice improved from {best_dice} to {val_dice}")
+            print(f"Save new best model to '{best_save_path}'")
+            best_dice = val_dice
+            save_checkpoint(model, optimizer, epoch, best_save_path, val_loss)
+            epoch_not_improve_couter = 0
+        else:
+            print(f"Model not impove dice...")
+            epoch_not_improve_couter += 1
         print("-" * 50)
         
         # Store results
@@ -173,6 +192,12 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             'val_iou': val_iou,
             'time': epoch_time
         })
+
+        # Save last model
+        save_checkpoint(model, optimizer, epoch, last_save_path, val_loss)
+        if epoch_not_improve_couter >= patience:
+            print(f"Early stoping at {epoch} with {patience} patience")
+            return pd.DataFrame(metrics_history)
     return pd.DataFrame(metrics_history)
 
 def save_checkpoint(model, optimizer, epoch, path, val_loss=None):

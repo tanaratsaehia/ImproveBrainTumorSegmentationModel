@@ -40,7 +40,7 @@ class SEBlock(nn.Module):
         return x * y.expand_as(x)
 
 class UNetBiPyramidSeDi(nn.Module):
-    def __init__(self, in_channels, num_classes, reduction=16, dilations_rate= [1, 2, 1, 2]):
+    def __init__(self, in_channels, num_classes, reduction=16, dilations_rate=[1, 2, 1, 2]):
         super(UNetBiPyramidSeDi, self).__init__()
         self.model_name = "U-Net_BiPyramid_SE_DI" + "".join(str(n) for n in dilations_rate)
         self.model_info = {

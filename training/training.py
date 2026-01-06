@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import torch
 import argparse
 import torch.nn as nn
@@ -11,6 +12,7 @@ from utils.data_helper import BRATSDataset2D, get_data_ids
 from model_structure import *
 from torch.utils.data import DataLoader, random_split
 
+start_running_time = time.time()
 
 # ----------------------------------- Running Arguments -----------------------------------
 parser = argparse.ArgumentParser(
@@ -19,7 +21,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -33,6 +35,18 @@ parser.add_argument(
     type=int,
     default=16,
     help=f"Batch size for DataLoader (default: 32)"
+)
+parser.add_argument(
+    '--se_reduction',
+    type=int,
+    default=16,
+    help="Squeeze and Excitation reduction rate."
+)
+parser.add_argument(
+    '--dilation_rate',
+    type=list,
+    default=[1, 2, 1, 2],
+    help="Dilation rate for u-net 4 layers."
 )
 parser.add_argument(
     '--lr',
@@ -63,32 +77,42 @@ parser.add_argument(
     action='store_true',
     help="Resume training from the last saved checkpoint."
 )
+parser.add_argument(
+    '--patience',
+    type=int,
+    default=10,
+    help="Patience for early stoping."
+)
 
 args = parser.parse_args()
 SLICE_INDICES= list(range(150))
 
 # Hyperparameters derived from arguments
-MODEL_NAME   = args.model_name
-ROOT_DIR     = os.path.join('BraTS-Datasets', args.data_dir)
-BATCH_SIZE   = args.batch_size
-LR           = args.lr
-NUM_EPOCHS   = args.epochs
-VAL_SPLIT    = args.val_split
-NUM_CLASSES  = args.num_classes
-NUM_WORKERS  = 2
-DEVICE       = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MODEL_NAME    = args.model_name
+SE_REDUCTION  = args.se_reduction
+DILATION_RATE = args.dilation_rate
+ROOT_DIR      = os.path.join('BraTS-Datasets', args.data_dir)
+BATCH_SIZE    = args.batch_size
+LR            = args.lr
+NUM_EPOCHS    = args.epochs
+VAL_SPLIT     = args.val_split
+NUM_CLASSES   = args.num_classes
+PATIENCE      = args.patience
+NUM_WORKERS   = 2
+DEVICE        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-print(f"--- Configuration ---")
+print(f"\n\n----- Configuration -----")
 print(f"Root Directory: {ROOT_DIR}")
 print(f"Batch Size: {BATCH_SIZE}")
 print(f"Learning Rate: {LR}")
 print(f"Epochs: {NUM_EPOCHS}")
+print(f"Patience: {PATIENCE}")
 print(f"Validation Split: {VAL_SPLIT}")
 print(f"Device: {DEVICE}")
 print(f"Num Workers: {NUM_WORKERS}")
 print(f"Num Classes: {NUM_CLASSES}")
 print(f"Training device: {DEVICE}")
-print(f"---------------------")
+
 
 
 # ----------------------------------- Data preparation -----------------------------------
@@ -118,19 +142,33 @@ val_loader = DataLoader(
     num_workers=NUM_WORKERS, pin_memory=True
 )
 
-
 # ----------------------------------- Create Model -----------------------------------
-# model = UNet(in_channels=4, num_classes=NUM_CLASSES)
-# ["u_net", "u_net_se", "u_net_di", "u_net_se_di", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"]
 model = None
 if MODEL_NAME == "u_net":
     model = UNet(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_se":
-    model = UNetSE(in_channels=4, num_classes=NUM_CLASSES)
-elif MODEL_NAME == "pyramid":
+    model = UNetSE(in_channels=4, num_classes=NUM_CLASSES, 
+                   reduction=SE_REDUCTION)
+elif MODEL_NAME == "u_net_di":
+    model = UNetDI(in_channels=4, num_classes=NUM_CLASSES, 
+                   dilations_rate=DILATION_RATE)
+elif MODEL_NAME == "u_net_se_di":
+    model = UNetSeDi(in_channels=4, num_classes=NUM_CLASSES, 
+                     reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+elif MODEL_NAME == "bipyramid":
     model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES)
-elif MODEL_NAME == "pyramid_se":
-    
+elif MODEL_NAME == "bipyramid_se":
+    model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
+                            reduction=SE_REDUCTION)
+elif MODEL_NAME == "bipyramid_di":
+    model = UNetBiPyramidDI(in_channels=4, num_classes=NUM_CLASSES, 
+                            dilations_rate=DILATION_RATE)
+elif MODEL_NAME == "bipyramid_se_di":
+    model = UNetBiPyramidSeDi(in_channels=4, num_classes=NUM_CLASSES, 
+                              reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+print(f"\nModel info: {model.model_info}")
+
+
 criterion = HybridLoss(NUM_CLASSES)
 optimizer = optim.Adam(model.parameters(), lr=LR)
 
@@ -138,6 +176,9 @@ TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'last_checkpoint.pth')
+BEST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'best_checkpoint.pth')
+print(f"Model will save into: {CHECKPOINT_DIR}")
+print(f"---------------------\n\n")
 
 start_epoch = 1
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
@@ -167,20 +208,16 @@ report = train_model(
     num_epochs=NUM_EPOCHS,
     start_epoch=start_epoch,
     device=DEVICE,
-    num_classes=NUM_CLASSES
-)
-
-final_completed_epoch = start_epoch + NUM_EPOCHS -1
-save_checkpoint(
-    model, 
-    optimizer, 
-    epoch=final_completed_epoch, 
-    path=LAST_CHECKPOINT_PATH,
-)
+    num_classes=NUM_CLASSES,
+    start_run_time=start_running_time,
+    best_save_path=BEST_CHECKPOINT_PATH,
+    last_save_path=LAST_CHECKPOINT_PATH,
+    patience=PATIENCE
+    )
 
 now = datetime.now()
 timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
-csv_file_name = f'{model.model_name}_{final_completed_epoch}epochs_{timestamp}.csv'
+csv_file_name = f'{model.model_name}_{timestamp}.csv'
 os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
 report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
 

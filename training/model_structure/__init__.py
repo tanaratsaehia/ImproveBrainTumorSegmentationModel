@@ -1,6 +1,6 @@
 from .u_net import UNet
-from .u_net_di import UNetDI
 from .u_net_se import UNetSE
+from .u_net_di import UNetDI
 from .u_net_se_di import UNetSeDi
 from .u_net_bipyramid import UNetBiPyramid
 from .u_net_bipyramid_se import UNetBiPyramidSE
