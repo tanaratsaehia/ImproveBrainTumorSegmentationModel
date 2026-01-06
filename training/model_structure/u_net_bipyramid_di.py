@@ -19,15 +19,27 @@ def dilated_block(in_ch, out_ch, dilation=2):
         nn.BatchNorm2d(out_ch), nn.ReLU(inplace=True)
     )
 
-class UNetBiPyramid(nn.Module):
-    def __init__(self, in_channels, num_classes):
-        super(UNetBiPyramid, self).__init__()
+class UNetBiPyramidDI(nn.Module):
+    def __init__(self, in_channels, num_classes, dilations_rate= [1, 2, 1, 2]):
+        super(UNetBiPyramidDI, self).__init__()
+
+        if type(dilations_rate) is not list or len(dilations_rate) != 4:
+            raise ValueError(f"Dilation '{dilations_rate}' rate not correct must be list and size 4 ex, [1,1,2,2]")
+        
+        self.dilations_rate = dilations_rate
+        self.model_name = "U-Net_BiPyramid_DI" + "".join(str(n) for n in self.dilations_rate)
+        self.model_info = {
+            'model_name': self.model_name, 
+            'dilation_rate': dilations_rate, 
+            'in_channel': in_channels, 
+            'out_channel(class)': num_classes
+            }
         
         # --- 1. Encoder (ซ้ายสุด - 5 Levels) ---
-        self.enc1 = double_conv(in_channels, 64)
-        self.enc2 = double_conv(64, 128)
-        self.enc3 = double_conv(128, 256)
-        self.enc4 = double_conv(256, 512)
+        self.enc1 = dilated_block(in_channels, 64, self.dilations_rate[0])
+        self.enc2 = dilated_block(64, 128, self.dilations_rate[1])
+        self.enc3 = dilated_block(128, 256, self.dilations_rate[2])
+        self.enc4 = dilated_block(256, 512, self.dilations_rate[3])
         self.enc5 = double_conv(512, 1024) # Bottleneck (ชั้นที่ 5)
         self.pool = nn.MaxPool2d(2)
 
@@ -117,7 +129,7 @@ class UNetBiPyramid(nn.Module):
 
 # ทดสอบขนาด Output
 if __name__ == "__main__":
-    model = UNetBiPyramid(in_channels=4, num_classes=2)
+    model = UNetBiPyramidDI(in_channels=4, num_classes=2)
     test_input = torch.randn(1, 4, 256, 256)
     output = model(test_input)
     print(f"Final output shape: {output.shape}") # ควรต้องเป็น [1, 2, 256, 256]

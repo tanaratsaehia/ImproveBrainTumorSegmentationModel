@@ -13,7 +13,13 @@ def double_conv(in_c, out_c):
 class UNetBiPyramid(nn.Module):
     def __init__(self, in_channels, num_classes):
         super(UNetBiPyramid, self).__init__()
-        
+        self.model_name = "U-Net_BiPyramid"
+        self.model_info = {
+            'model_name': self.model_name,
+            'in_channel': in_channels, 
+            'out_channel(class)': num_classes
+            }
+
         # --- 1. Encoder (ซ้ายสุด - 5 Levels) ---
         self.enc1 = double_conv(in_channels, 64)
         self.enc2 = double_conv(64, 128)

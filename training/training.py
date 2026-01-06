@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -121,7 +121,7 @@ val_loader = DataLoader(
 
 # ----------------------------------- Create Model -----------------------------------
 # model = UNet(in_channels=4, num_classes=NUM_CLASSES)
-# ["u_net", "u_net_se", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"]
+# ["u_net", "u_net_se", "u_net_di", "u_net_se_di", "pyramid", "pyramid_se", "pyramid_di", "pyramid_se_di"]
 model = None
 if MODEL_NAME == "u_net":
     model = UNet(in_channels=4, num_classes=NUM_CLASSES)
