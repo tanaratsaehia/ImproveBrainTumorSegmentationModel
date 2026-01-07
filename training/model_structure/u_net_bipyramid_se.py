@@ -57,22 +57,22 @@ class UNetBiPyramidSE(nn.Module):
         self.lat_e1 = nn.Conv2d(64, 256, 1)
         
         # Up-conv 2x2 (ลูกศรเขียวตรงกลาง)
-        self.up_p5 = nn.ConvTranspose2d(1024, 256, 2, 2)
-        self.up_p4 = nn.ConvTranspose2d(256, 256, 2, 2)
-        self.up_p3 = nn.ConvTranspose2d(256, 256, 2, 2)
+        self.up_p5 = nn.ConvTranspose2d(1024, 256, 2, 2, output_padding=(0, 1))
+        self.up_p4 = nn.ConvTranspose2d(256, 256, 2, 2, output_padding=(1, 0))
+        self.up_p3 = nn.ConvTranspose2d(256, 256, 2, 2, output_padding=(1, 1))
         self.up_p2 = nn.ConvTranspose2d(256, 256, 2, 2)
 
         # --- 3. Standard Decoder (Out 2 - ขยับมาทางขวา) ---
         # รับข้อมูลจาก Bottleneck และ Skip Connection จาก Encoder
-        self.up_d5 = nn.ConvTranspose2d(1024, 512, 2, 2)
+        self.up_d5 = nn.ConvTranspose2d(1024, 512, 2, 2, output_padding=(0, 1))
         self.dec4 = double_conv(1024, 512) # 512(skip) + 512(up)
         self.se_dec4 = SEBlock(512, reduction)
         
-        self.up_d4 = nn.ConvTranspose2d(512, 256, 2, 2)
+        self.up_d4 = nn.ConvTranspose2d(512, 256, 2, 2, output_padding=(1, 0))
         self.dec3 = double_conv(512, 256)
         self.se_dec3 = SEBlock(256, reduction)
         
-        self.up_d3 = nn.ConvTranspose2d(256, 128, 2, 2)
+        self.up_d3 = nn.ConvTranspose2d(256, 128, 2, 2, output_padding=(1, 1))
         self.dec2 = double_conv(256, 128)
         self.se_dec2 = SEBlock(128, reduction)
         
@@ -87,8 +87,8 @@ class UNetBiPyramidSE(nn.Module):
         self.lat_d2 = nn.Conv2d(128, 64, 1)
         self.lat_d1 = nn.Conv2d(64, 64, 1)
         
-        self.up_r4 = nn.ConvTranspose2d(64, 64, 2, 2)
-        self.up_r3 = nn.ConvTranspose2d(64, 64, 2, 2)
+        self.up_r4 = nn.ConvTranspose2d(64, 64, 2, 2, output_padding=(1, 0))
+        self.up_r3 = nn.ConvTranspose2d(64, 64, 2, 2, output_padding=(1, 1))
         self.up_r2 = nn.ConvTranspose2d(64, 64, 2, 2)
 
         # --- 5. Final Output Fusion ---
