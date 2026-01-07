@@ -2,6 +2,9 @@ import pandas as pd
 import time
 import torch
 from datetime import datetime
+import mlflow
+import mlflow.pytorch
+from mlflow.artifacts import download_artifacts
 
 def dice_coef(preds, targets, num_classes, smooth=1e-6):
     """
@@ -58,7 +61,7 @@ def iou_metric(preds, targets, num_classes, smooth=1e-6):
 
 def train_model(model, criterion, optimizer, train_loader, val_loader, 
                 num_epochs, num_classes, device, start_epoch, start_run_time, 
-                best_save_path, last_save_path, patience=10):
+                best_save_path, last_save_path, patience=10, best_val_dice=None):
     """
     Trains and validates the segmentation model, tracking metrics per epoch.
 
@@ -74,21 +77,21 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         start_run_time (float): Start time to stop before hit gpu wall time.
         best_save_path (str): Path to save best model.
         last_save_path (str): Path to save last model.
-
+        patience (int): For trigger early stopping.
 
     Returns:
         pandas.DataFrame: DataFrame containing epoch-wise metrics.
     """
     LIMIT_TIME_IN_SECONDS = (2 * 3600) + (45 * 60) # 2h 45m
     metrics_history = []
-    print(f"Starting training on {device} for {num_epochs-start_epoch} epochs...")
+    print(f"Starting training on {device} for {num_epochs   } epochs...")
     
     # Get total number of batches for the progress display
     total_batches = len(train_loader)
-    best_dice = float('-inf')
+    best_val_dice = best_val_dice or float('-inf')
     epoch_not_improve_couter = 0
     
-    for epoch in range(start_epoch, num_epochs):
+    for epoch in range(start_epoch, num_epochs+1):
         start_time = time.time()
         
         # ------------------- TRAINING PHASE -------------------
@@ -124,8 +127,8 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
                 # Calculate the average loss up to the current batch
                 avg_running_loss = running_loss / num_batches_train
                 print(
-                    f"  [Epoch {epoch}/{num_epochs-1} | Batch {idx + 1}/{total_batches}] "
-                    f"Batch Loss: {current_loss:.4f} | Avg. Train Loss: {avg_running_loss:.4f}"
+                    f"  [Epoch {epoch}/{num_epochs} | Batch {idx + 1}/{total_batches}] "
+                    f"Batch Loss: {current_loss:.5f} | Avg. Train Loss: {avg_running_loss:.5f}"
                 )
             if time.time() - start_run_time > LIMIT_TIME_IN_SECONDS:
                 print(f"\n\nStop training before hit wall time at {epoch} epoch.")
@@ -166,14 +169,15 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         epoch_time = time.time() - start_time
 
         print("-" * 50)
-        print(f"Epoch {epoch}/{num_epochs-1} Complete | Time: {epoch_time:.2f}s")
-        print(f"  Train Metrics: Loss={train_loss:.4f}, Dice={train_dice:.4f}, IoU={train_iou:.4f}")
-        print(f"  Val Metrics:   Loss={val_loss:.4f}, Dice={val_dice:.4f}, IoU={val_iou:.4f}")
-        if val_dice > best_dice:
-            print(f"Validate Dice improved from {best_dice:.4f} to {val_dice:.4f}")
+        print(f"Epoch {epoch}/{num_epochs} Complete | Time: {epoch_time:.2f}s")
+        print(f"  Train Metrics: Loss={train_loss:.5f}, Dice={train_dice:.5f}, IoU={train_iou:.5f}")
+        print(f"  Val Metrics:   Loss={val_loss:.5f}, Dice={val_dice:.5f}, IoU={val_iou:.5f}")
+        if val_dice > best_val_dice:
+            print(f"Validate Dice improved from {best_val_dice:.5f} to {val_dice:.5f}")
             print(f"Save new best model to '{best_save_path}'")
-            best_dice = val_dice
-            save_checkpoint(model, optimizer, epoch, best_save_path, val_loss)
+            best_val_dice = val_dice
+            save_checkpoint(model, optimizer, epoch, best_save_path, best_val_dice, val_loss)
+            mlflow.log_artifact(best_save_path)
             epoch_not_improve_couter = 0
         else:
             print(f"Model not impove dice...")
@@ -181,7 +185,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         print("-" * 50)
         
         # Store results
-        metrics_history.append({
+        epoch_result = {
             'epoch': epoch,
             'train_loss': train_loss,
             'train_dice': train_dice,
@@ -189,22 +193,37 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             'val_loss': val_loss,
             'val_dice': val_dice,
             'val_iou': val_iou,
-            'time': epoch_time
-        })
+            'epoch_time(sec)': epoch_time
+        }
+        metrics_history.append(epoch_result)
+        for key, value in epoch_result.items():
+            if key != 'epoch':
+                mlflow.log_metric(key, value, step=epoch)
 
         # Save last model
-        save_checkpoint(model, optimizer, epoch, last_save_path, val_loss)
+        save_checkpoint(model, optimizer, epoch, last_save_path, best_val_dice, val_loss)
+        mlflow.log_artifact(last_save_path)
         if epoch_not_improve_couter >= patience:
             print(f"Early stoping at {epoch} with {patience} patience")
             return pd.DataFrame(metrics_history)
+
+        # <<<<<-----------!!!!! MUST pay attention this condition stop training at 3 epoch optimise for hit wall time !!!!!
+        if epoch - start_epoch == 3:
+            hours, remainder = divmod(time.time() - start_run_time, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            print("CAUTION: Stop training with fixed 3 epoch")
+            print(f"Total training time {int(hours)}h {int(minutes)}m {int(seconds)}s")
+            return pd.DataFrame(metrics_history)
+        
     return pd.DataFrame(metrics_history)
 
-def save_checkpoint(model, optimizer, epoch, path, val_loss=None):
+def save_checkpoint(model, optimizer, epoch, path, val_dice, val_loss=None):
     """Saves the essential components needed to resume training."""
     checkpoint = {
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
+        'best_val_dice': val_dice,
         'val_loss': val_loss,
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -263,7 +282,7 @@ def test_model(model, criterion, test_loader, num_classes, device):
 
     print("-" * 50)
     print(f"Testing Complete | Total Time: {test_time:.2f}s")
-    print(f"  Final Metrics: Loss={avg_test_loss:.4f}, Dice={avg_test_dice:.4f}, IoU={avg_test_iou:.4f}")
+    print(f"  Final Metrics: Loss={avg_test_loss:.5f}, Dice={avg_test_dice:.5f}, IoU={avg_test_iou:.5f}")
     print("-" * 50)
     
     # Store results in a DataFrame

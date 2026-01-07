@@ -1,3 +1,4 @@
+import gc
 import os
 import sys
 import time
@@ -40,8 +41,8 @@ parser.add_argument(
 parser.add_argument(
     '--batch_size',
     type=int,
-    default=32,
-    help=f"Batch size for DataLoader (default: 32)"
+    default=16,
+    help=f"Batch size for DataLoader (default: 16)"
 )
 parser.add_argument(
     '--se_reduction',
@@ -121,7 +122,7 @@ print(f"Learning Rate: {LR}")
 print(f"Epochs: {NUM_EPOCHS}")
 print(f"Patience: {PATIENCE}")
 print(f"Validation Split: {VAL_SPLIT}")
-print(f"Device: {DEVICE}")
+# print(f"Device: {DEVICE}")
 print(f"Num Workers: {NUM_WORKERS}")
 print(f"Num Classes: {NUM_CLASSES}")
 print(f"Training device: {DEVICE}")
@@ -192,6 +193,7 @@ print(f"Model will save into: {CHECKPOINT_DIR}")
 print(f"---------------------------\n")
 
 start_epoch = 1
+best_val_dice = None
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
     print(f"\nResuming training from {LAST_CHECKPOINT_PATH}...")
     try:
@@ -203,28 +205,53 @@ if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
                 if isinstance(v, torch.Tensor):
                     state[k] = v.to(DEVICE)
         start_epoch = checkpoint['epoch'] + 1
+        best_val_dice = checkpoint.get('best_val_dice', None)
         print(f"Checkpoint loaded successfully. Resuming from epoch {start_epoch}.")
     except Exception as e:
         print(f"Error loading checkpoint: {e}. Starting from scratch.")
         start_epoch = 1
+        best_val_dice = None
+
+# ----------------------------------- MLFlow Configuration -----------------------------------
+load_dotenv()
+server_uri = os.getenv("MLFLOW_SERVER_URI")
+mlflow.set_tracking_uri(server_uri)
+mlflow.set_experiment(f"BrainTumor {model.model_name} Training")
+
 
 # ----------------------------------- Training -----------------------------------
-model.to(DEVICE)
-report = train_model(
-    model=model,
-    train_loader=train_loader,
-    val_loader=val_loader,
-    criterion=criterion, 
-    optimizer=optimizer,
-    num_epochs=NUM_EPOCHS,
-    start_epoch=start_epoch,
-    device=DEVICE,
-    num_classes=NUM_CLASSES,
-    start_run_time=start_running_time,
-    best_save_path=BEST_CHECKPOINT_PATH,
-    last_save_path=LAST_CHECKPOINT_PATH,
-    patience=PATIENCE
-    )
+with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
+    mlflow.set_tag("ml.step", "model_training_evaluation")
+    mlflow.log_param("model_info", model.model_info)
+    mlflow.log_param("start_epoch", start_epoch)
+    mlflow.log_param("target_epoch", NUM_EPOCHS)
+    mlflow.log_param("data_dir", ROOT_DIR)
+    mlflow.log_param("batch_size", BATCH_SIZE)
+    mlflow.log_param("learning_rate", LR)
+    mlflow.log_param("patience", PATIENCE)
+    mlflow.log_param("val_split", VAL_SPLIT)
+    mlflow.log_param("se_reduction_rate", SE_REDUCTION)
+    mlflow.log_param("dilation_rate", DILATION_RATE)
+    mlflow.log_param("random_seed", SEED)
+    mlflow.log_param("checkpoint_dir", CHECKPOINT_DIR)
+
+    model.to(DEVICE)
+    report = train_model(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        criterion=criterion, 
+        optimizer=optimizer,
+        num_epochs=NUM_EPOCHS,
+        start_epoch=start_epoch,
+        device=DEVICE,
+        num_classes=NUM_CLASSES,
+        start_run_time=start_running_time,
+        best_save_path=BEST_CHECKPOINT_PATH,
+        last_save_path=LAST_CHECKPOINT_PATH,
+        patience=PATIENCE,
+        best_val_dice=best_val_dice
+        )
 
 now = datetime.now()
 timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
@@ -232,5 +259,15 @@ csv_file_name = f'{model.model_name}_{timestamp}.csv'
 os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
 report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
 
-# BraTS-Datasets/BraTS-10file-2per
-# BraTS-Datasets/BraTS-25file-5per
+if 'model' in locals():
+    del model
+if 'optimizer' in locals():
+    del optimizer
+
+gc.collect()
+
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    torch.cuda.synchronize()
+
+os._exit(0)
