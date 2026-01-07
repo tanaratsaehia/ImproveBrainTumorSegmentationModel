@@ -81,7 +81,6 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
     """
     LIMIT_TIME_IN_SECONDS = (2 * 3600) + (45 * 60) # 2h 45m
     metrics_history = []
-    num_epochs = start_epoch + num_epochs
     print(f"Starting training on {device} for {num_epochs-start_epoch} epochs...")
     
     # Get total number of batches for the progress display
@@ -101,6 +100,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         
         # Use enumerate to get the batch index (idx)
         for idx, (imgs, masks) in enumerate(train_loader):
+            # print(f"Image shape: {imgs.shape}")
             imgs, masks = imgs.to(device), masks.to(device)
             
             # Remap label '4' -> '3' for 4 classes (0, 1, 2, 3)

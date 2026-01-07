@@ -47,6 +47,7 @@ class UNetBiPyramidSeDi(nn.Module):
             'model_name': self.model_name, 
             'se_reduction': reduction, 
             'dilation_rate': dilations_rate,
+            'description': "Squeeze and excitation add only decoder side of U-Net",
             'in_channel': in_channels, 
             'out_channel(class)': num_classes
             }

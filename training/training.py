@@ -2,10 +2,17 @@ import os
 import sys
 import time
 import torch
+import random
 import argparse
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
+
+import mlflow
+import mlflow.pytorch
+from mlflow.artifacts import download_artifacts
+from dotenv import load_dotenv
 
 from utils.training_helper import train_model, save_checkpoint
 from utils.data_helper import BRATSDataset2D, get_data_ids
@@ -86,6 +93,12 @@ parser.add_argument(
 
 args = parser.parse_args()
 SLICE_INDICES= list(range(150))
+
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
 
 # Hyperparameters derived from arguments
 MODEL_NAME    = args.model_name
@@ -176,7 +189,7 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'last_checkpoint.pth')
 BEST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'best_checkpoint.pth')
 print(f"Model will save into: {CHECKPOINT_DIR}")
-print(f"---------------------\n\n")
+print(f"---------------------------\n")
 
 start_epoch = 1
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):

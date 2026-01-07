@@ -2,13 +2,14 @@
 1.[Done] update model structure to present
     1.1 [Done] currently modify u_net_bipyramid_di.py not finish yet
     1.2 [Done] must be add another file like u_net_di.py for fully separatly
-    1.3 add note for se block for tell their position to add it
+    1.3 [Done] add note for se block for tell their position to add it
 2.update training code
     2.1 [Done] flexible option for easy to use
-    2.2 [Done] save model (best and last)
-    2.3 [Done] resume training
-    2.4 [Done] auto stop when almost 3 hour
+    2.2 [Passed] save model (best and last)
+    2.3 [Passed] resume training
+    2.4 [Passed] auto stop when almost 3 hour
     2.5 [Done] early stoping
+    2.6 [Done] fix random seed
 3.add mlflow to tracking
     3.1 config mlflow server
     3.2 add to training code

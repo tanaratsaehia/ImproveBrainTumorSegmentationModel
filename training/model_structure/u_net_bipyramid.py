@@ -114,7 +114,7 @@ class UNetBiPyramid(nn.Module):
 
 # ทดสอบขนาด Output
 if __name__ == "__main__":
-    model = UNetBiPyramid(in_channels=4, num_classes=2)
-    test_input = torch.randn(1, 4, 256, 256)
+    model = UNetBiPyramid(in_channels=4, num_classes=4)
+    test_input = torch.randn(1, 4, 182, 218)
     output = model(test_input)
-    print(f"Final output shape: {output.shape}") # ควรต้องเป็น [1, 2, 256, 256]
+    print(f"Final output shape: {output.shape}") 

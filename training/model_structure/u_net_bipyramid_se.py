@@ -37,6 +37,7 @@ class UNetBiPyramidSE(nn.Module):
         self.model_info = {
             'model_name': self.model_name, 
             'se_reduction': reduction, 
+            'description': "Squeeze and excitation add only decoder side of U-Net",
             'in_channel': in_channels, 
             'out_channel(class)': num_classes
             }
