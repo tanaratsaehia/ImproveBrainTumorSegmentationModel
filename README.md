@@ -12,7 +12,7 @@ This repository is for CP413706 Research Methodology and CP414781 Research Proje
 ```bash
 conda create -n brain_mri python=3.10
 conda activate brain_mri
-pip install -r requirements.txt
+pip install mlflow
 ```
 
 ### 2. Run MLFlow server and create .env
