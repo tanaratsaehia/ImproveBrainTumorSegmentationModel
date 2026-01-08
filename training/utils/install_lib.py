@@ -12,24 +12,19 @@ def install_package(package_names):
     """
     all_ready = True
     for package_name in package_names:
-        # 1. Check if package is already installed/available
         spec = importlib.util.find_spec(package_name)
         
         if spec is None:
             print(f"{package_name} not found. Installing now...")
             try:
-                # 2. Install the package using the current Python environment's pip
                 subprocess.check_call([sys.executable, "-m", "pip", "install", package_name], 
                                       stdout=sys.stdout, stderr=sys.stderr)
                 print(f"{package_name} successfully installed.")
                 
-                # 3. CRITICAL FIX: Reload the spec and dynamically import the module
-                #    This makes the newly installed package available to the current process.
                 spec = importlib.util.find_spec(package_name)
                 if spec:
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
-                    # Add the module to sys.modules so subsequent 'import nibabel' works
                     sys.modules[package_name] = module 
                     print(f"Successfully loaded {package_name} into current environment.")
                 else:
