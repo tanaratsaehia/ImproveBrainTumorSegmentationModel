@@ -197,7 +197,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             'val_loss': val_loss,
             'val_dice': val_dice,
             'val_iou': val_iou,
-            'epoch_time(sec)': epoch_time
+            'epoch_time_sec': epoch_time
         }
         metrics_history.append(epoch_result)
         for key, value in epoch_result.items():

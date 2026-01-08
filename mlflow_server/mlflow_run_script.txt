@@ -1,6 +1,6 @@
 mlflow runner:
-    cd KKU-World/year_3/MLOps/mlflow_data
-    conda activate mlops_final
+    cd /mlflow_data
+    conda activate brain_mri
     OPTION
         nohup mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri ./mlruns --serve-artifacts > mlflow.log 2>&1 &
 
