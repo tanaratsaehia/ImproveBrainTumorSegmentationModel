@@ -91,8 +91,10 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
     best_val_dice = best_val_dice or float('-inf')
     epoch_not_improve_couter = 0
     
+    
     for epoch in range(start_epoch, num_epochs+1):
         start_time = time.time()
+        total_preprocess_each_epoch = 0
         
         # ------------------- TRAINING PHASE -------------------
         model.train()
@@ -104,8 +106,10 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         # Use enumerate to get the batch index (idx)
         for idx, (imgs, masks) in enumerate(train_loader):
             # print(f"Image shape: {imgs.shape}")
+            start_preprocess_time = time.time()
             imgs, masks = imgs.to(device), masks.to(device)
-            
+            total_preprocess_each_epoch += time.time() - start_preprocess_time
+
             # Remap label '4' -> '3' for 4 classes (0, 1, 2, 3)
             masks = masks.clone()
             masks[masks == 4] = 3
@@ -169,7 +173,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         epoch_time = time.time() - start_time
 
         print("-" * 50)
-        print(f"Epoch {epoch}/{num_epochs} Complete | Time: {epoch_time:.2f}s")
+        print(f"Epoch {epoch}/{num_epochs} Complete | Total Time: {epoch_time:.2f}s | Preprocess Time: {total_preprocess_each_epoch:.2f}s")
         print(f"  Train Metrics: Loss={train_loss:.5f}, Dice={train_dice:.5f}, IoU={train_iou:.5f}")
         print(f"  Val Metrics:   Loss={val_loss:.5f}, Dice={val_dice:.5f}, IoU={val_iou:.5f}")
         if val_dice > best_val_dice:

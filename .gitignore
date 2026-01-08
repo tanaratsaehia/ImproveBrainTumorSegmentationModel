@@ -1,2 +1,4 @@
 ignore_dir
 .env
+mlruns
+*.log

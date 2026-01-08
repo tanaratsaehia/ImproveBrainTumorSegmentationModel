@@ -11,9 +11,10 @@
     2.5 [Done] early stoping
     2.6 [Done] fix random seed
 3.add mlflow to tracking
-    3.1 config mlflow server
-    3.2 add to training code
-    3.3 got problem with kku vpn when lost and reconnection ip will change overtime
+    3.1 [Done] config mlflow server
+    3.2 [Done] add to training code
+    3.3 [Fixed] got problem with kku vpn when lost and reconnection ip will change overtime
 4.test run training
+    [Running]
 
 
