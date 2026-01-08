@@ -10,11 +10,14 @@
     2.4 [Passed] auto stop when almost 3 hour
     2.5 [Done] early stoping
     2.6 [Done] fix random seed
+    2.7 [Done] Stop training when hit setting epoch (because loop on h-100 infinity)
 3.add mlflow to tracking
     3.1 [Done] config mlflow server
     3.2 [Done] add to training code
     3.3 [Fixed] got problem with kku vpn when lost and reconnection ip will change overtime
 4.test run training
-    [Running]
+    [Running] to find any problem if not have any problem then can run full loop to train model
+    4.1 [verified] is the most time in each epoch are training model not preprocess or other to make training script or efficient
+        we got the actual problem: Epoch 16/25 Complete 2725.31s | Preprocess Time: 1878.94s | Training time: 174.05s | Validate time: 672.26s
 
 

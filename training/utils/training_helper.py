@@ -82,9 +82,13 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
     Returns:
         pandas.DataFrame: DataFrame containing epoch-wise metrics.
     """
-    LIMIT_TIME_IN_SECONDS = (2 * 3600) + (45 * 60) # 2h 45m
+    if num_epochs == start_epoch:
+        print(f"Skip training model is already trained at {num_epochs} epoch")
+        return
+
+    LIMIT_TIME_IN_SECONDS = (2 * 3600) + (50 * 60) # 2h 50m
     metrics_history = []
-    print(f"Starting training on {device} for {num_epochs   } epochs...")
+    print(f"Starting training on {device} for {num_epochs} epochs...")
     
     # Get total number of batches for the progress display
     total_batches = len(train_loader)
@@ -94,7 +98,8 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
     
     for epoch in range(start_epoch, num_epochs+1):
         start_time = time.time()
-        total_preprocess_each_epoch = 0
+        total_preprocess_time_each_epoch = 0
+        total_model_training_time_each_epoch = 0
         
         # ------------------- TRAINING PHASE -------------------
         model.train()
@@ -103,14 +108,13 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         running_iou = 0.0
         num_batches_train = 0
         
-        # Use enumerate to get the batch index (idx)
+        start_preprocess_time = time.time()
         for idx, (imgs, masks) in enumerate(train_loader):
-            # print(f"Image shape: {imgs.shape}")
-            start_preprocess_time = time.time()
             imgs, masks = imgs.to(device), masks.to(device)
-            total_preprocess_each_epoch += time.time() - start_preprocess_time
+            total_preprocess_time_each_epoch += time.time() - start_preprocess_time
 
             # Remap label '4' -> '3' for 4 classes (0, 1, 2, 3)
+            start_ai_compute_time = time.time()
             masks = masks.clone()
             masks[masks == 4] = 3
 
@@ -121,7 +125,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             optimizer.step()
             
             # Accumulate metrics
-            current_loss = loss.item() # Get loss for immediate reporting
+            current_loss = loss.item()
             running_loss += current_loss
             running_dice += dice_coef(outputs, masks, num_classes)
             running_iou += iou_metric(outputs, masks, num_classes)
@@ -137,6 +141,9 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
             if time.time() - start_run_time > LIMIT_TIME_IN_SECONDS:
                 print(f"\n\nStop training before hit wall time at {epoch} epoch.")
                 return pd.DataFrame(metrics_history)
+            
+            total_model_training_time_each_epoch += time.time() - start_ai_compute_time
+            start_preprocess_time = time.time()
 
 
         train_loss = running_loss / num_batches_train
@@ -144,6 +151,7 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         train_iou = running_iou / num_batches_train
 
         # ------------------- VALIDATION PHASE -------------------
+        start_val_time = time.time()
         model.eval()
         val_loss = 0.0
         val_dice = 0.0
@@ -169,11 +177,11 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
         val_loss /= num_batches_val
         val_dice /= num_batches_val
         val_iou /= num_batches_val
-        
+        total_val_time = time.time() - start_val_time
         epoch_time = time.time() - start_time
 
         print("-" * 50)
-        print(f"Epoch {epoch}/{num_epochs} Complete | Total Time: {epoch_time:.2f}s | Preprocess Time: {total_preprocess_each_epoch:.2f}s")
+        print(f"Epoch {epoch}/{num_epochs} Complete {epoch_time:.2f}s | Preprocess Time: {total_preprocess_time_each_epoch:.2f}s | Training time: {total_model_training_time_each_epoch:.2f}s | Validate time: {total_val_time:.2f}s")
         print(f"  Train Metrics: Loss={train_loss:.5f}, Dice={train_dice:.5f}, IoU={train_iou:.5f}")
         print(f"  Val Metrics:   Loss={val_loss:.5f}, Dice={val_dice:.5f}, IoU={val_iou:.5f}")
         if val_dice > best_val_dice:
@@ -206,19 +214,12 @@ def train_model(model, criterion, optimizer, train_loader, val_loader,
 
         # Save last model
         save_checkpoint(model, optimizer, epoch, last_save_path, best_val_dice, val_loss)
-        mlflow.log_artifact(last_save_path)
+        # mlflow.log_artifact(last_save_path)                                           # <<<<--------- Disable save last model into mlflow server for more training speed
         if epoch_not_improve_couter >= patience:
             print(f"Early stoping at {epoch} with {patience} patience")
             return pd.DataFrame(metrics_history)
-
-        # <<<<<-----------!!!!! MUST pay attention this condition stop training at 3 epoch optimise for hit wall time !!!!!
-        if epoch - start_epoch == 3:
-            hours, remainder = divmod(time.time() - start_run_time, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            print("CAUTION: Stop training with fixed 3 epoch")
-            print(f"Total training time {int(hours)}h {int(minutes)}m {int(seconds)}s")
-            return pd.DataFrame(metrics_history)
         
+    print("\nFinish training!!\n")
     return pd.DataFrame(metrics_history)
 
 def save_checkpoint(model, optimizer, epoch, path, val_dice, val_loss=None):

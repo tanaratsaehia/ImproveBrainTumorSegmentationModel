@@ -16,7 +16,7 @@ from mlflow.artifacts import download_artifacts
 from dotenv import load_dotenv
 
 from utils.training_helper import train_model, save_checkpoint
-from utils.data_helper import BRATSDataset2D, get_data_ids
+from utils.data_helper import BRATSDataset2D
 from model_structure import *
 from torch.utils.data import DataLoader, random_split
 
@@ -35,7 +35,7 @@ parser.add_argument(
 parser.add_argument(
     '--data_dir',
     type=str,
-    default='BraTS-96file-20per-train',
+    default='SLICED_Trainset',
     help="Path to the root directory containing the BraTS datasets."
 )
 parser.add_argument(
@@ -65,8 +65,8 @@ parser.add_argument(
 parser.add_argument(
     '--epochs',
     type=int,
-    default=25,
-    help=f"Number of training epochs (default: 25)"
+    default=50,
+    help=f"Number of training epochs (default: 50)"
 )
 parser.add_argument(
     '--val_split',
@@ -91,9 +91,20 @@ parser.add_argument(
     default=5,
     help="Patience for early stoping (default 5)."
 )
+parser.add_argument(
+    '--loss_ce_weight',
+    type=float,
+    default=0.5,
+    help="Crossentropy loss weight (default 0.5)."
+)
+parser.add_argument(
+    '--loss_dice_weight',
+    type=float,
+    default=0.5,
+    help="Dice loss weight (default 0.5)."
+)
 
 args = parser.parse_args()
-SLICE_INDICES= list(range(150))
 
 SEED = 42
 random.seed(SEED)
@@ -109,6 +120,8 @@ ROOT_DIR      = os.path.join('BraTS-Datasets', args.data_dir)
 BATCH_SIZE    = args.batch_size
 LR            = args.lr
 NUM_EPOCHS    = args.epochs
+LOSS_CE_WEIGHT   = args.loss_ce_weight
+LOSS_DICE_WEIGHT = args.loss_dice_weight
 VAL_SPLIT     = args.val_split
 NUM_CLASSES   = args.num_classes
 PATIENCE      = args.patience
@@ -122,7 +135,8 @@ print(f"Learning Rate: {LR}")
 print(f"Epochs: {NUM_EPOCHS}")
 print(f"Patience: {PATIENCE}")
 print(f"Validation Split: {VAL_SPLIT}")
-# print(f"Device: {DEVICE}")
+print(f"Crossentropy loss weight: {LOSS_CE_WEIGHT}")
+print(f"Dice loss weight: {LOSS_DICE_WEIGHT}")
 print(f"Num Workers: {NUM_WORKERS}")
 print(f"Num Classes: {NUM_CLASSES}")
 print(f"Training device: {DEVICE}")
@@ -131,11 +145,9 @@ print(f"Training device: {DEVICE}")
 if not os.path.isdir(ROOT_DIR):
     sys.exit(f"Error: Directory not found at {ROOT_DIR}")
 
-SUBJECT_IDS = get_data_ids(ROOT_DIR)
 full_dataset = BRATSDataset2D(
+    csv_path    = os.path.join(ROOT_DIR, 'dataset_mapper.csv'),
     root_dir    = ROOT_DIR,
-    subject_ids = SUBJECT_IDS,
-    slice_indices = SLICE_INDICES,
     transform   = None
 )
 
@@ -144,14 +156,15 @@ print(f'Total data {len(full_dataset)} images.')
 n_val = int(len(full_dataset) * VAL_SPLIT)
 n_train = len(full_dataset) - n_val
 train_ds, val_ds = random_split(full_dataset, [n_train, n_val])
+print(f"Train: {n_train} imgs | Validate: {n_val} imgs")
 
 train_loader = DataLoader(
     train_ds, batch_size=BATCH_SIZE, shuffle=True,
-    num_workers=NUM_WORKERS, pin_memory=True
+    num_workers=NUM_WORKERS, pin_memory=False
 )
 val_loader = DataLoader(
     val_ds, batch_size=BATCH_SIZE, shuffle=False,
-    num_workers=NUM_WORKERS, pin_memory=True
+    num_workers=NUM_WORKERS, pin_memory=False
 )
 
 # ----------------------------------- Create Model -----------------------------------
@@ -181,7 +194,7 @@ elif MODEL_NAME == "bipyramid_se_di":
 print(f"\nModel info: {model.model_info}")
 
 
-criterion = HybridLoss(NUM_CLASSES)
+criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
 optimizer = optim.Adam(model.parameters(), lr=LR)
 
 TRAIN_RESULT_PATH = 'training_results'
@@ -234,6 +247,8 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.log_param("dilation_rate", DILATION_RATE)
     mlflow.log_param("random_seed", SEED)
     mlflow.log_param("checkpoint_dir", CHECKPOINT_DIR)
+    mlflow.log_param("crossentropy_loss_weight", LOSS_CE_WEIGHT)
+    mlflow.log_param("dice_loss_weight", LOSS_DICE_WEIGHT)
 
     model.to(DEVICE)
     report = train_model(
@@ -253,11 +268,12 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
         best_val_dice=best_val_dice
         )
 
-now = datetime.now()
-timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
-csv_file_name = f'{model.model_name}_{timestamp}.csv'
-os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
-report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
+if report is not None:
+    now = datetime.now()
+    timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
+    csv_file_name = f'{model.model_name}_{timestamp}.csv'
+    os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
+    report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
 
 if 'model' in locals():
     del model

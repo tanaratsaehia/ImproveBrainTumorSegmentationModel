@@ -40,5 +40,5 @@ def install_package(package_names):
     return all_ready
 
 if __name__ == "__main__":
-    packages = ['mlflow']
+    packages = ['mlflow', 'nibabel']
     install_package(packages)
