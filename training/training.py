@@ -65,8 +65,8 @@ parser.add_argument(
 parser.add_argument(
     '--epochs',
     type=int,
-    default=50,
-    help=f"Number of training epochs (default: 50)"
+    default=100,
+    help=f"Number of training epochs (default: 100)"
 )
 parser.add_argument(
     '--val_split',

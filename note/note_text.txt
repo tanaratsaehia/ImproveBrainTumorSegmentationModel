@@ -2,7 +2,7 @@
 สรุป 
     การปรับขนาดข้อมูลต้องปรึกษาอ.ไพรสันต์ -> ลดได้แต่ไปลอง optimise training code ก่อน
     โมเดลที่จะทดลองเพื่อส่ง midterm คือ 
-        Oil account: U-Net, U-NetSE
+        Oil account: U-Net, U-NetSE, U-NetBipyramidSeDi
         PP account: U-NetDI, U-NetSeDi
-        Big account: U-NetBipyramid, U-NetBipyramidSE
+        Big account: U-NetBipyramid, U-NetBipyramidSE, U-NetBipyramidDI
     midterm นำเสนอวันที่ 22-23 มกราคม 2569

@@ -1,16 +1,16 @@
 
-1.[Done] update model structure to present
+1.update model structure to present
     1.1 [Done] currently modify u_net_bipyramid_di.py not finish yet
     1.2 [Done] must be add another file like u_net_di.py for fully separatly
     1.3 [Done] add note for se block for tell their position to add it
 2.update training code
-    2.1 [Done] flexible option for easy to use
+    2.1 [Passed] flexible option for easy to use
     2.2 [Passed] save model (best and last)
     2.3 [Passed] resume training
     2.4 [Passed] auto stop when almost 3 hour
-    2.5 [Done] early stoping
+    2.5 [Passed] early stoping
     2.6 [Done] fix random seed
-    2.7 [Done] Stop training when hit setting epoch (because loop on h-100 infinity)
+    2.7 [Passed] Stop training when hit setting epoch (because loop on h-100 infinity)
 3.add mlflow to tracking
     3.1 [Done] config mlflow server
     3.2 [Done] add to training code
@@ -18,6 +18,8 @@
 4.test run training
     [Running] to find any problem if not have any problem then can run full loop to train model
     4.1 [verified] is the most time in each epoch are training model not preprocess or other to make training script or efficient
-        we got the actual problem: Epoch 16/25 Complete 2725.31s | Preprocess Time: 1878.94s | Training time: 174.05s | Validate time: 672.26s
-
+        [Fixed] we got the actual problem: Epoch 16/25 Complete 2725.31s | Preprocess Time: 1878.94s | Training time: 174.05s | Validate time: 672.26s
+5.test model    
+    5.1 [Done] apply mlflow to save tesing results
+    5.2 [Done] test model
 

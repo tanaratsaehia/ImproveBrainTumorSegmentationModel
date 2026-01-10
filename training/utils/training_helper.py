@@ -290,13 +290,13 @@ def test_model(model, criterion, test_loader, num_classes, device):
     print(f"  Final Metrics: Loss={avg_test_loss:.5f}, Dice={avg_test_dice:.5f}, IoU={avg_test_iou:.5f}")
     print("-" * 50)
     
-    # Store results in a DataFrame
-    test_metrics = pd.DataFrame([{
+    # Store results in a Dict
+    test_metrics = {
         'model_name': model.model_name,
         'loss': avg_test_loss,
         'dice': avg_test_dice,
         'iou': avg_test_iou,
         'time': test_time
-    }])
+    }
     
     return test_metrics
