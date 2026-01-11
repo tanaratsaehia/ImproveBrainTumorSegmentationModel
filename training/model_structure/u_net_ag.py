@@ -66,13 +66,12 @@ class AttentionUpBlock(nn.Module):
 class UNetAG(nn.Module):
     def __init__(self, in_channels, num_classes):
         super().__init__()
-        if num_classes is not None:
-            out_channels = num_classes
         self.model_name = "U-Net_AG"
         self.model_info = {
             'model_name': self.model_name,
             'in_channel': in_channels, 
-            'out_channel(class)': num_classes
+            'out_channel(class)': num_classes,
+            'description': "U-Net with attention gate in skip connection."
             }
 
         self.inc = DoubleConv(in_channels, 64)

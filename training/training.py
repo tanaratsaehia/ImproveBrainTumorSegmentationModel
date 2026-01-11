@@ -9,6 +9,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import mlflow
 import mlflow.pytorch
@@ -29,7 +30,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -88,7 +89,7 @@ parser.add_argument(
 parser.add_argument(
     '--patience',
     type=int,
-    default=5,
+    default=7,
     help="Patience for early stoping (default 5)."
 )
 parser.add_argument(
@@ -180,8 +181,12 @@ elif MODEL_NAME == "u_net_di":
 elif MODEL_NAME == "u_net_se_di":
     model = UNetSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                      reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+elif MODEL_NAME == "u_net_ag":
+    model = UNetAG(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_aspp":
+    model = UNetASPP(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "bipyramid":
-    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES)
+    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
 elif MODEL_NAME == "bipyramid_se":
     model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                             reduction=SE_REDUCTION)
@@ -191,11 +196,16 @@ elif MODEL_NAME == "bipyramid_di":
 elif MODEL_NAME == "bipyramid_se_di":
     model = UNetBiPyramidSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                               reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+else:
+    print("ERROR: Model name miss match!")
+    time.sleep(10)
+    os._exit(0)
 print(f"\nModel info: {model.model_info}")
-
+model.to(DEVICE)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
 optimizer = optim.Adam(model.parameters(), lr=LR)
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=PATIENCE) # max mode for dice | min mode for loss
 
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
@@ -213,12 +223,30 @@ if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
         checkpoint = torch.load(LAST_CHECKPOINT_PATH, map_location=DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
         for state in optimizer.state.values():
             for k, v in state.items():
                 if isinstance(v, torch.Tensor):
                     state[k] = v.to(DEVICE)
+        
         start_epoch = checkpoint['epoch'] + 1
         best_val_dice = checkpoint.get('best_val_dice', None)
+
+        if checkpoint.get('scheduler_state_dict', None) != None:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        
+        if checkpoint.get('is_early_stop', None):
+            time.sleep(5)
+            print("\nStop training by early stopping exit...\n")
+            time.sleep(20)
+            os._exit(0)
+        
+        if start_epoch >= NUM_EPOCHS:
+            time.sleep(5)
+            print(f"Stop training model is already trained at {NUM_EPOCHS} epoch")
+            time.sleep(20)
+            os._exit(0)
+
         print(f"Checkpoint loaded successfully. Resuming from epoch {start_epoch}.")
     except Exception as e:
         print(f"Error loading checkpoint: {e}. Starting from scratch.")
@@ -230,7 +258,6 @@ load_dotenv()
 server_uri = os.getenv("MLFLOW_SERVER_URI")
 mlflow.set_tracking_uri(server_uri)
 mlflow.set_experiment(f"BrainTumor {model.model_name} Training")
-
 
 # ----------------------------------- Training -----------------------------------
 with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
@@ -250,13 +277,13 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.log_param("crossentropy_loss_weight", LOSS_CE_WEIGHT)
     mlflow.log_param("dice_loss_weight", LOSS_DICE_WEIGHT)
 
-    model.to(DEVICE)
     report = train_model(
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion, 
         optimizer=optimizer,
+        scheduler=scheduler,
         num_epochs=NUM_EPOCHS,
         start_epoch=start_epoch,
         device=DEVICE,
@@ -272,8 +299,9 @@ if report is not None:
     now = datetime.now()
     timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
     csv_file_name = f'{model.model_name}_{timestamp}.csv'
-    os.makedirs(os.path.join(TRAIN_RESULT_PATH, 'train_report'), exist_ok=True)
-    report.to_csv(os.path.join(TRAIN_RESULT_PATH, 'train_report', csv_file_name), index=False)
+    report_path = os.path.join(TRAIN_RESULT_PATH, 'train_report_2', model.model_name)
+    os.makedirs(report_path, exist_ok=True)
+    report.to_csv(os.path.join(report_path, csv_file_name), index=False)
 
 if 'model' in locals():
     del model

@@ -13,14 +13,17 @@ def double_conv(in_c, out_c):
     )
 
 class UNetBiPyramid(nn.Module):
-    def __init__(self, in_channels, num_classes):
+    def __init__(self, in_channels, num_classes, deep_supervision=False):
         super(UNetBiPyramid, self).__init__()
         self.model_name = "U-Net_BiPyramid"
+        self.deep_supervision = deep_supervision
         self.model_info = {
             'model_name': self.model_name,
             'in_channel': in_channels, 
             'out_channel(class)': num_classes
             }
+        if self.deep_supervision:
+            self.model_info['description'] = "Add deep supervision to help tuning loss at standard decoder(out 2) and right pyramid(out 3)"
 
         # --- 1. Encoder (Downsampling) ---
         self.enc1 = double_conv(in_channels, 64)
@@ -44,13 +47,10 @@ class UNetBiPyramid(nn.Module):
         # --- 3. Standard Decoder (Out 2) ---
         self.up_d5 = nn.ConvTranspose2d(1024, 512, 2, 2)
         self.dec4 = double_conv(1024, 512)
-
         self.up_d4 = nn.ConvTranspose2d(512, 256, 2, 2)
         self.dec3 = double_conv(512, 256)
-
         self.up_d3 = nn.ConvTranspose2d(256, 128, 2, 2)
         self.dec2 = double_conv(256, 128)
-
         self.up_d2 = nn.ConvTranspose2d(128, 64, 2, 2)
         self.dec1 = double_conv(128, 64)
 
@@ -70,6 +70,13 @@ class UNetBiPyramid(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(128, num_classes, 1)
         )
+
+        # --- 6. Deep Supervision Heads (Auxiliary Classifiers) ---
+        if self.deep_supervision:
+            # Out 2 (Standard Decoder) outputs 64 channels -> map to num_classes
+            self.ds_head_out2 = nn.Conv2d(64, num_classes, 1)
+            # Out 3 (Right Pyramid) outputs 64 channels -> map to num_classes
+            self.ds_head_out3 = nn.Conv2d(64, num_classes, 1)
 
     def _match_and_add(self, x, target):
         """Helper function: ปรับขนาด x ให้เท่ากับ target แล้วนำมาบวกกัน"""
@@ -113,7 +120,17 @@ class UNetBiPyramid(nn.Module):
 
         # --- FINAL FUSION ---
         combined = torch.cat([out1, out2, out3], dim=1)
-        return self.final_head(combined)
+        final_out = self.final_head(combined)
+
+        # Return Logic for Deep Supervision
+        if self.deep_supervision and self.training:
+            # Apply 1x1 conv to auxiliary outputs to get class logits
+            aux2 = self.ds_head_out2(out2)
+            aux3 = self.ds_head_out3(out3)
+            # Return list: [Main, Aux1, Aux2]
+            return [final_out, aux2, aux3]
+        else:
+            return final_out
 
 
 # ทดสอบขนาด Output

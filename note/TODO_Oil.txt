@@ -23,3 +23,10 @@
     5.1 [Done] apply mlflow to save tesing results
     5.2 [Done] test model
 
+What's next after got results
+    1.modify training function
+        1.1 [Done] Dynamics learning rate try ReduceLROnPlateau
+        1.2 [Done] Apply deep super vision to training loop
+        1.3 [Done] log best saved epoch into mlflow
+        1.4 [Done] stop training when trigger by patience because h-100 rerun train script (patience is reset)
+        1.5 [Done] append csv log file in a same file or adjust save path to easy to split
