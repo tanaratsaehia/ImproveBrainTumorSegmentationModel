@@ -14,6 +14,24 @@ class DoubleConv(nn.Module):
             nn.ReLU(inplace=True)
         )
     def forward(self, x): return self.double_conv(x)
+
+class UpBlock(nn.Module):
+    """Upsampling ตามด้วยการ Concat และ DoubleConv"""
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        # ลด channel ลงครึ่งหนึ่งด้วย ConvTranspose
+        self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+        self.conv = DoubleConv(in_channels, out_channels)
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        
+        # จัดการเรื่อง Size Mismatch แบบ Dynamic
+        if x.shape[2:] != skip.shape[2:]:
+            x = F.interpolate(x, size=skip.shape[2:], mode='bilinear', align_corners=False)
+            
+        x = torch.cat([x, skip], dim=1)
+        return self.conv(x)
     
 class ASPP(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -67,7 +85,6 @@ class UNetASPP(nn.Module):
         # เปลี่ยน Bottleneck เป็น ASPP
         self.aspp_bottleneck = nn.Sequential(nn.MaxPool2d(2), ASPP(512, 1024))
 
-        from __main__ import UpBlock # เรียกใช้ UpBlock ปกติจากโค้ดเดิม
         self.up1 = UpBlock(1024, 512)
         self.up2 = UpBlock(512, 256)
         self.up3 = UpBlock(256, 128)
