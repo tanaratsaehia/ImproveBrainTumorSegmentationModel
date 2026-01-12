@@ -130,7 +130,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
                 loss2 = criterion(aux_out2, masks)
                 loss3 = criterion(aux_out3, masks)
                 
-                loss = loss0 + (0.5 * loss2) + (0.5 * loss3)
+                loss = loss0 + (0.6 * loss2) + (0.4 * loss3)
                 
                 # Use only final_output for metrics (Dice/IoU) logic below
                 outputs = final_output 
@@ -216,6 +216,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
         
         scheduler.step(val_dice)
         current_lr = optimizer.param_groups[0]['lr']
+        print(f"Scheduler Patience Counter: {scheduler.num_bad_epochs}/{scheduler.patience}")
         print(f"Current Learning Rate: {current_lr}")
         mlflow.log_metric("learning_rate", current_lr, step=epoch)
         print("-" * 50)

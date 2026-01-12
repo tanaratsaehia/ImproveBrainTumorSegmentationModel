@@ -35,8 +35,12 @@ def main(args):
     elif MODEL_NAME == "u_net_se_di":
         model = UNetSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                         reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+    elif MODEL_NAME == "u_net_ag":
+        model = UNetAG(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_aspp":
+        model = UNetASPP(in_channels=4, num_classes=NUM_CLASSES)
     elif MODEL_NAME == "bipyramid":
-        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES)
+        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
     elif MODEL_NAME == "bipyramid_se":
         model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                                 reduction=SE_REDUCTION)
@@ -124,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument(
         'model_name',
         type=str,
-        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
         help="Name of the architecture to use. Options: %(choices)s"
     )
     parser.add_argument(
@@ -174,6 +178,8 @@ if __name__ == '__main__':
 # u_net_se training_results/checkpoints_U-Net_SE/best_checkpoint.pth
 # u_net_di training_results/checkpoints_U-Net_DI1212/best_checkpoint.pth
 # u_net_se_di training_results/checkpoints_U-Net_SE_DI1212/best_checkpoint.pth
+# u_net_ag training_results/checkpoints_U-Net_AG/best_checkpoint.pth
+# u_net_aspp training_results/checkpoints_U-Net_ASPP/best_checkpoint.pth
 
 # bipyramid training_results/checkpoints_U-Net_BiPyramid/best_checkpoint.pth
 # bipyramid_se training_results/checkpoints_U-Net_BiPyramid_SE/best_checkpoint.pth

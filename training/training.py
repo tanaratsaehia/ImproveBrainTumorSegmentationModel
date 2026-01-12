@@ -87,6 +87,11 @@ parser.add_argument(
     help="Resume training from the last saved checkpoint."
 )
 parser.add_argument(
+    '--load_best',
+    action='store_true',
+    help="For resume training from the best saved checkpoint."
+)
+parser.add_argument(
     '--patience',
     type=int,
     default=7,
@@ -127,6 +132,7 @@ VAL_SPLIT     = args.val_split
 NUM_CLASSES   = args.num_classes
 PATIENCE      = args.patience
 NUM_WORKERS   = 2
+LOAD_BEST     = args.load_best
 DEVICE        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"\n\n----- Configuration -----")
@@ -205,7 +211,7 @@ model.to(DEVICE)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
 optimizer = optim.Adam(model.parameters(), lr=LR)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=PATIENCE) # max mode for dice | min mode for loss
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
 
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
@@ -218,9 +224,14 @@ print(f"---------------------------\n")
 start_epoch = 1
 best_val_dice = None
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
-    print(f"\nResuming training from {LAST_CHECKPOINT_PATH}...")
     try:
-        checkpoint = torch.load(LAST_CHECKPOINT_PATH, map_location=DEVICE)
+        if LOAD_BEST:
+            checkpoint = torch.load(BEST_CHECKPOINT_PATH, map_location=DEVICE)
+            print(f"\nResuming training from {BEST_CHECKPOINT_PATH}...")
+        else:
+            checkpoint = torch.load(LAST_CHECKPOINT_PATH, map_location=DEVICE)
+            print(f"\nResuming training from {LAST_CHECKPOINT_PATH}...")
+        
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
