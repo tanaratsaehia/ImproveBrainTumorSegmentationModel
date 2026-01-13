@@ -7,7 +7,7 @@
         Big: U-NetBipyramid, U-NetBipyramidSE, U-NetBipyramidDI
     
     การทดลองครั้งที่ 2 
-        Oil: U-NetAG, U-NetASPP, U-netBipyramidDI (LR = 0.00005)
+        Oil: U-NetAG, U-NetASPP, U_NetHybrid, [Done] U-netBipyramidDI (LR = 0.00005)
         PP: U-Net, U-NetSE, U-Net bipyramid(Deep supervision)
 
     midterm นำเสนอวันที่ 22-23 มกราคม 2569

@@ -8,6 +8,7 @@ from .u_net_bipyramid import UNetBiPyramid
 from .u_net_bipyramid_se import UNetBiPyramidSE
 from .u_net_bipyramid_di import UNetBiPyramidDI
 from .u_net_bipyramid_se_di import UNetBiPyramidSeDi
+from .u_net_hybrid import HybridUNet
 from .hybrid_loss import HybridLoss
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
