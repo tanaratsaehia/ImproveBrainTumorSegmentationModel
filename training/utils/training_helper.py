@@ -216,8 +216,9 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
         
         scheduler.step(val_dice)
         current_lr = optimizer.param_groups[0]['lr']
-        print(f"Scheduler Patience Counter: {scheduler.num_bad_epochs}/{scheduler.patience}")
         print(f"Current Learning Rate: {current_lr}")
+        print(f"Scheduler Patience Counter: {scheduler.num_bad_epochs}/{scheduler.patience}")
+        print(f"Early Stopping Patience Counter: {epoch_not_improve_couter}/{patience}")
         mlflow.log_metric("learning_rate", current_lr, step=epoch)
         print("-" * 50)
         

@@ -211,7 +211,8 @@ model.to(DEVICE)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
 optimizer = optim.Adam(model.parameters(), lr=LR)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=int(PATIENCE/2), threshold=5e-4, cooldown=1, min_lr=1e-6) # max mode for dice | min mode for loss
+# optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
 
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
