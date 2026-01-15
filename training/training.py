@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_hybrid", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -191,6 +191,8 @@ elif MODEL_NAME == "u_net_ag":
     model = UNetAG(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_aspp":
     model = UNetASPP(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_hybrid":
+    model = HybridUNet(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "bipyramid":
     model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
 elif MODEL_NAME == "bipyramid_se":

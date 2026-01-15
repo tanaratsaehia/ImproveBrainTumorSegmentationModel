@@ -86,6 +86,11 @@ class HybridUNet(nn.Module):
     def __init__(self, in_channels, num_classes):
         super().__init__()
         self.model_name = "Hybrid_MDGR_FRD_UNet"
+        self.model_info = {
+            'model_name': self.model_name,
+            'in_channel': in_channels, 
+            'out_channel(class)': num_classes
+            }
         
         # --- Encoder (Using MDGRBlock) ---
         self.inc   = MDGRBlock(in_channels, 64)
