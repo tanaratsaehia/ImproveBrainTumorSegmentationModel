@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_hybrid", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_ag_aspp", "u_net_res", "u_net_hybrid", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -193,6 +193,11 @@ elif MODEL_NAME == "u_net_aspp":
     model = UNetASPP(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_hybrid":
     model = HybridUNet(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_ag_aspp":
+    model = UNetAG_ASPP(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_res":
+    model = UNetRes(in_channels=4, num_classes=NUM_CLASSES)
+
 elif MODEL_NAME == "bipyramid":
     model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
 elif MODEL_NAME == "bipyramid_se":
@@ -213,7 +218,7 @@ model.to(DEVICE)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
 optimizer = optim.Adam(model.parameters(), lr=LR)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=int(PATIENCE/2), threshold=5e-4, cooldown=1, min_lr=1e-6) # max mode for dice | min mode for loss
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
 # optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
 
 TRAIN_RESULT_PATH = 'training_results'
@@ -313,7 +318,7 @@ if report is not None:
     now = datetime.now()
     timestamp = now.strftime("%d-%m-%Y_%H-%M-%S")
     csv_file_name = f'{model.model_name}_{timestamp}.csv'
-    report_path = os.path.join(TRAIN_RESULT_PATH, 'train_report_2', model.model_name)
+    report_path = os.path.join(TRAIN_RESULT_PATH, 'train_report_3', model.model_name)
     os.makedirs(report_path, exist_ok=True)
     report.to_csv(os.path.join(report_path, csv_file_name), index=False)
 

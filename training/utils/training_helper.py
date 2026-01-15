@@ -119,21 +119,31 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
             optimizer.zero_grad()
             outputs = model(imgs)
             if isinstance(outputs, (list, tuple)):
-                # Deep Supervision Case: outputs = [final, aux2, aux3]
-                final_output = outputs[0]
-                aux_out2 = outputs[1]
-                aux_out3 = outputs[2]
+                loss = 0
+                weights = model.model_info['deep_supervision_loss']
                 
-                # Loss = Main + (0.5 * Aux2) + (0.5 * Aux3)
-                # You can adjust the weight (0.5) as needed
-                loss0 = criterion(final_output, masks)
-                loss2 = criterion(aux_out2, masks)
-                loss3 = criterion(aux_out3, masks)
+                for i, _out in enumerate(outputs):
+                    head_loss = criterion(_out, masks)
+                    loss += head_loss * float(weights[i])
                 
-                loss = loss0 + (0.6 * loss2) + (0.4 * loss3)
+                outputs = outputs[0]
+
+                ######################## Old Code ################################
+                # # Deep Supervision Case: outputs = [final, aux2, aux3]
+                # final_output = outputs[0]
+                # aux_out2 = outputs[1]
+                # aux_out3 = outputs[2]
                 
-                # Use only final_output for metrics (Dice/IoU) logic below
-                outputs = final_output 
+                # # Loss = Main + (0.5 * Aux2) + (0.5 * Aux3)
+                # # You can adjust the weight (0.5) as needed
+                # loss0 = criterion(final_output, masks)
+                # loss2 = criterion(aux_out2, masks)
+                # loss3 = criterion(aux_out3, masks)
+                
+                # loss = loss0 + (0.6 * loss2) + (0.4 * loss3)
+                
+                # # Use only final_output for metrics (Dice/IoU) logic below
+                # outputs = final_output 
             else:
                 # Normal Case
                 loss = criterion(outputs, masks)

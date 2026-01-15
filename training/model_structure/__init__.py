@@ -10,5 +10,7 @@ from .u_net_bipyramid_di import UNetBiPyramidDI
 from .u_net_bipyramid_se_di import UNetBiPyramidSeDi
 from .u_net_hybrid import HybridUNet
 from .hybrid_loss import HybridLoss
+from .u_net_ag_aspp import UNetAG_ASPP
+from .u_net_res import UNetRes
 
 __version__ = "1.1.3"

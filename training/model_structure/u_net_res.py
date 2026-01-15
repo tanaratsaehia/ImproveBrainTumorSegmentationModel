@@ -116,7 +116,8 @@ class UNetRes(nn.Module):
         self.model_info = {
             'model_name': self.model_name,
             'in_channel': in_channels, 
-            'out_channel(class)': num_classes,
+            'out_channel': num_classes,
+            'deep_supervision_loss': [1.0, 0.3, 0.2, 0.1],
             'description': "U-Net with attention gate, parallel-residual encoder, ASPP bottleneck, and Deep Supervision."
         }
 
