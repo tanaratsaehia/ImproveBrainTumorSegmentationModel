@@ -39,7 +39,7 @@ class UNetBiPyramidSE(nn.Module):
             'se_reduction': reduction, 
             'description': "Squeeze and excitation add only decoder side of U-Net",
             'in_channel': in_channels, 
-            'out_channel(class)': num_classes
+            'out_channel': num_classes
             }
 
         # --- 1. Encoder (ซ้ายสุด - 5 Levels) ---

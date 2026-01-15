@@ -99,7 +99,7 @@ class UNetAG_ASPP(nn.Module):
         self.model_info = {
             'model_name': self.model_name,
             'in_channel': in_channels, 
-            'out_channel(class)': num_classes,
+            'out_channel': num_classes,
             'description': "U-Net with ASPP block in bottleneck and Attention Gate at skip connection"
         }
 

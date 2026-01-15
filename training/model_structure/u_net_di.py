@@ -33,7 +33,7 @@ class UNetDI(nn.Module):
             'model_name': self.model_name,
             'dilation_rate': dilations_rate,
             'in_channel': in_channels, 
-            'out_channel(class)': num_classes
+            'out_channel': num_classes
             }
         
         # Encoder
