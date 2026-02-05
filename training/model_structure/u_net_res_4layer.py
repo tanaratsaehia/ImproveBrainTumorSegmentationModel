@@ -109,36 +109,38 @@ class DecoderBlock(nn.Module):
         return self.relu(self.conv(x) + self.shortcut(x))
 
 # --- [5] Main Architecture: BraTSSmallNet ---
-class UNetRes(nn.Module):
+class UNetRes4Layer(nn.Module):
     def __init__(self, in_channels=4, num_classes=4):
         super().__init__()
-        self.model_name = "ResUNet_AG_ASPP_DS"
+        self.model_name = "ResUNet_4Layer_AG_ASPP_DS"
         self.model_info = {
             'model_name': self.model_name,
             'in_channel': in_channels, 
             'out_channel': num_classes,
-            'deep_supervision_loss': [1.0, 0.3, 0.2, 0.1],
-            'description': "U-Net with attention gate, parallel-residual encoder, ASPP bottleneck, and Deep Supervision."
+            # 'deep_supervision_loss': [1.0, 0.3, 0.2, 0.1],
+            'deep_supervision_loss': [1.0, 0.2, 0.1],
+            'description': "U-Net reduce layer to 4 (include buttle neck) with attention gate, parallel-residual encoder, ASPP bottleneck, and Deep Supervision."
         }
 
         # Encoder Stages (Hierarchical Sequential-Parallel)
         self.enc1 = EncoderBlock(in_channels, 64, d_rate=1)
         self.enc2 = EncoderBlock(64, 128, d_rate=2)
         self.enc3 = EncoderBlock(128, 256, d_rate=2)
-        self.enc4 = EncoderBlock(256, 512, d_rate=3)
+        # self.enc4 = EncoderBlock(256, 512, d_rate=3)
 
         # Bottleneck
-        self.bottleneck = ResidualASPP(512, 1024)
+        self.bottleneck = ResidualASPP(256, 512)
+        # self.bottleneck = ResidualASPP(512, 1024)
 
         # Attention Gates
-        self.ag4 = AttentionGate(F_g=512, F_l=512, F_int=256)
+        # self.ag4 = AttentionGate(F_g=512, F_l=512, F_int=256)
         self.ag3 = AttentionGate(F_g=256, F_l=256, F_int=128)
         self.ag2 = AttentionGate(F_g=128, F_l=128, F_int=64)
         self.ag1 = AttentionGate(F_g=64, F_l=64, F_int=32)
 
         # Decoder & Up-sampling
-        self.up4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
-        self.dec4 = DecoderBlock(1024, 512)
+        # self.up4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
+        # self.dec4 = DecoderBlock(1024, 512)
         
         self.up3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
         self.dec3 = DecoderBlock(512, 256)
@@ -162,22 +164,23 @@ class UNetRes(nn.Module):
         s1 = self.enc1(x)
         s2 = self.enc2(F.max_pool2d(s1, 2))
         s3 = self.enc3(F.max_pool2d(s2, 2))
-        s4 = self.enc4(F.max_pool2d(s3, 2))
+        # s4 = self.enc4(F.max_pool2d(s3, 2))
 
         # --- Bottleneck ---
-        b = self.bottleneck(F.max_pool2d(s4, 2))
+        b = self.bottleneck(F.max_pool2d(s3, 2))
+        # b = self.bottleneck(F.max_pool2d(s4, 2))
 
         # --- Decoder Path with Spatial Alignment ---
         
         # Level 4
-        d4 = self.up4(b)
-        if d4.shape[2:] != s4.shape[2:]:
-            d4 = F.interpolate(d4, size=s4.shape[2:], mode='bilinear', align_corners=False)
-        a4 = self.ag4(g=d4, x=s4)
-        d4 = self.dec4(torch.cat([d4, a4], dim=1))
+        # d4 = self.up4(b)
+        # if d4.shape[2:] != s4.shape[2:]:
+        #     d4 = F.interpolate(d4, size=s4.shape[2:], mode='bilinear', align_corners=False)
+        # a4 = self.ag4(g=d4, x=s4)
+        # d4 = self.dec4(torch.cat([d4, a4], dim=1))
         
         # Level 3
-        d3 = self.up3(d4)
+        d3 = self.up3(b)
         if d3.shape[2:] != s3.shape[2:]:
             d3 = F.interpolate(d3, size=s3.shape[2:], mode='bilinear', align_corners=False)
         a3 = self.ag3(g=d3, x=s3)
@@ -202,15 +205,16 @@ class UNetRes(nn.Module):
 
         # --- Deep Supervision Path ---
         if self.training:
-            out4 = F.interpolate(self.ds4(d4), size=x.shape[2:], mode='bilinear', align_corners=False)
+            # out4 = F.interpolate(self.ds4(d4), size=x.shape[2:], mode='bilinear', align_corners=False)
             out3 = F.interpolate(self.ds3(d3), size=x.shape[2:], mode='bilinear', align_corners=False)
             out2 = F.interpolate(self.ds2(d2), size=x.shape[2:], mode='bilinear', align_corners=False)
-            return final_mask, out4, out3, out2
+            return final_mask, out3, out2
+            # return final_mask, out4, out3, out2
         
         return final_mask
 
 if __name__ == "__main__":
-    model = UNetRes(in_channels=4, num_classes=4)
+    model = UNetRes4Layer(in_channels=4, num_classes=4)
     test_input = torch.randn(1, 4, 182, 218)
     output = model(test_input)
     if isinstance(output, tuple):

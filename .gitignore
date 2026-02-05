@@ -2,3 +2,4 @@ ignore_dir
 .env
 mlruns
 *.log
+__pycache__/

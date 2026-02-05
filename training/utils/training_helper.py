@@ -62,7 +62,8 @@ def iou_metric(preds, targets, num_classes, smooth=1e-6):
 
 def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader, 
                 num_epochs, num_classes, device, start_epoch, start_run_time, 
-                best_save_path, last_save_path, patience=10, best_val_dice=None):
+                best_save_path, last_save_path, patience=10, best_val_dice=None,
+                not_improve_counter=None):
     """
     Trains and validates the segmentation model, tracking metrics per epoch.
 
@@ -91,8 +92,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
     # Get total number of batches for the progress display
     total_batches = len(train_loader)
     best_val_dice = best_val_dice or float('-inf')
-    epoch_not_improve_couter = 0
-    
+    epoch_not_improve_couter = not_improve_counter or 0
     
     for epoch in range(start_epoch, num_epochs+1):
         start_time = time.time()
@@ -119,21 +119,14 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
             optimizer.zero_grad()
             outputs = model(imgs)
             if isinstance(outputs, (list, tuple)):
-                # Deep Supervision Case: outputs = [final, aux2, aux3]
-                final_output = outputs[0]
-                aux_out2 = outputs[1]
-                aux_out3 = outputs[2]
+                loss = 0
+                weights = model.model_info['deep_supervision_loss']
                 
-                # Loss = Main + (0.5 * Aux2) + (0.5 * Aux3)
-                # You can adjust the weight (0.5) as needed
-                loss0 = criterion(final_output, masks)
-                loss2 = criterion(aux_out2, masks)
-                loss3 = criterion(aux_out3, masks)
+                for i, _out in enumerate(outputs):
+                    head_loss = criterion(_out, masks)
+                    loss += head_loss * float(weights[i])
                 
-                loss = loss0 + (0.6 * loss2) + (0.4 * loss3)
-                
-                # Use only final_output for metrics (Dice/IoU) logic below
-                outputs = final_output 
+                outputs = outputs[0]
             else:
                 # Normal Case
                 loss = criterion(outputs, masks)
@@ -148,7 +141,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
             num_batches_train += 1
 
             if (idx + 1) % 100 == 0 or (idx + 1) == total_batches:
-                # Calculate the average loss up to the current batch
+                # Calculate the average loss up to tepoch_not_improve_couterhe current batch
                 avg_running_loss = running_loss / num_batches_train
                 print(
                     f"  [Epoch {epoch}/{num_epochs} | Batch {idx + 1}/{total_batches}] "
@@ -206,7 +199,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
             print(f"Validate Dice improved from {best_val_dice:.5f} to {val_dice:.5f}")
             print(f"Save new best model to '{best_save_path}'")
             best_val_dice = val_dice
-            save_checkpoint(model, optimizer, scheduler, epoch, best_save_path, best_val_dice, val_loss)
+            save_checkpoint(model, optimizer, scheduler, epoch, best_save_path, best_val_dice, epoch_not_improve_couter, val_loss)
             mlflow.log_artifact(best_save_path)
             mlflow.log_metric('best_saved_epoch', epoch)
             epoch_not_improve_couter = 0
@@ -239,18 +232,18 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
                 mlflow.log_metric(key, value, step=epoch)
 
         # Save last model
-        save_checkpoint(model, optimizer, scheduler, epoch, last_save_path, best_val_dice, val_loss)
+        save_checkpoint(model, optimizer, scheduler, epoch, last_save_path, best_val_dice, epoch_not_improve_couter, val_loss)
         # mlflow.log_artifact(last_save_path)                        # <<<<--------- Disable save last model into mlflow server for more training speed
         
         if epoch_not_improve_couter >= patience:
             print(f"Early stoping at {epoch} with {patience} patience")
-            save_checkpoint(model, optimizer, scheduler, epoch, last_save_path, best_val_dice, val_loss, is_early_stop=True)
+            save_checkpoint(model, optimizer, scheduler, epoch, last_save_path, best_val_dice, epoch_not_improve_couter, val_loss, is_early_stop=True)
             return pd.DataFrame(metrics_history)
         
     print("\nFinish training!!\n")
     return pd.DataFrame(metrics_history)
 
-def save_checkpoint(model, optimizer, scheduler, epoch, path, val_dice, val_loss=None, is_early_stop=False):
+def save_checkpoint(model, optimizer, scheduler, epoch, path, val_dice, not_improve_counter, val_loss=None, is_early_stop=False):
     """Saves the essential components needed to resume training."""
     checkpoint = {
         'epoch': epoch,
@@ -258,6 +251,7 @@ def save_checkpoint(model, optimizer, scheduler, epoch, path, val_dice, val_loss
         'optimizer_state_dict': optimizer.state_dict(),
         'scheduler_state_dict': scheduler.state_dict(),
         'best_val_dice': val_dice,
+        'not_improve_counter': not_improve_counter,
         'val_loss': val_loss,
         'is_early_stop': is_early_stop,
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
