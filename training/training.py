@@ -76,7 +76,7 @@ parser.add_argument(
 parser.add_argument(
     '--epochs',
     type=int,
-    default=100,
+    default=125,
     help=f"Number of training epochs (default: 100)"
 )
 parser.add_argument(
@@ -104,7 +104,7 @@ parser.add_argument(
 parser.add_argument(
     '--patience',
     type=int,
-    default=7,
+    default=25,
     help="Patience for early stoping (default 5)."
 )
 parser.add_argument(
@@ -247,7 +247,7 @@ else:
     sys.exit(1)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=10, threshold=1e-3) # max mode for dice | min mode for loss
 # optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
 
 TRAIN_RESULT_PATH = 'training_results'
@@ -260,6 +260,7 @@ print(f"---------------------------\n")
 
 start_epoch = 1
 best_val_dice = None
+not_improve_counter = None
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
     try:
         if LOAD_BEST:
