@@ -12,5 +12,6 @@ from .u_net_hybrid import HybridUNet
 from .hybrid_loss import HybridLoss
 from .u_net_ag_aspp import UNetAG_ASPP
 from .u_net_res import UNetRes
+from .u_net_res_4layer import UNetRes4Layer
 
 __version__ = "1.1.3"

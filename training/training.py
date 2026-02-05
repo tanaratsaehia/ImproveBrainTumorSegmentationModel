@@ -30,8 +30,17 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     'model_name',
     type=str,
-    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_ag_aspp", "u_net_res", "u_net_hybrid", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+    choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
+             "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", "bipyramid_se", 
+             "bipyramid_di", "bipyramid_se_di"],
     help="Name of the architecture to use. Options: %(choices)s"
+)
+parser.add_argument(
+    '--optim',
+    default="adam_w",
+    type=str,
+    choices=["adam", "adam_w"],
+    help="Name of the optimizer to use. Options: %(choices)s"
 )
 parser.add_argument(
     '--data_dir',
@@ -119,13 +128,14 @@ torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
 # Hyperparameters derived from arguments
-MODEL_NAME    = args.model_name
-SE_REDUCTION  = args.se_reduction
-DILATION_RATE = args.dilation_rate
-ROOT_DIR      = os.path.join('BraTS-Datasets', args.data_dir)
-BATCH_SIZE    = args.batch_size
-LR            = args.lr
-NUM_EPOCHS    = args.epochs
+MODEL_NAME     = args.model_name
+OPTIMIZER_NAME = args.optim
+SE_REDUCTION   = args.se_reduction
+DILATION_RATE  = args.dilation_rate
+ROOT_DIR       = os.path.join('BraTS-Datasets', args.data_dir)
+BATCH_SIZE     = args.batch_size
+LR             = args.lr
+NUM_EPOCHS     = args.epochs
 LOSS_CE_WEIGHT   = args.loss_ce_weight
 LOSS_DICE_WEIGHT = args.loss_dice_weight
 VAL_SPLIT     = args.val_split
@@ -197,6 +207,8 @@ elif MODEL_NAME == "u_net_ag_aspp":
     model = UNetAG_ASPP(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_res":
     model = UNetRes(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_res_4layer":
+    model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
 elif MODEL_NAME == "bipyramid":
     model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
@@ -216,8 +228,15 @@ else:
 print(f"\nModel info: {model.model_info}")
 model.to(DEVICE)
 
+if OPTIMIZER_NAME == "adam":
+    optimizer = optim.Adam(model.parameters(), lr=LR)
+elif OPTIMIZER_NAME == "adam_w":
+    optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-5)
+else:
+    print(f"Unkonw optimizer '{OPTIMIZER_NAME}'")
+    sys.exit(1)
+
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
-optimizer = optim.Adam(model.parameters(), lr=LR)
 scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
 # optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
 
@@ -250,6 +269,7 @@ if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
         
         start_epoch = checkpoint['epoch'] + 1
         best_val_dice = checkpoint.get('best_val_dice', None)
+        not_improve_counter = checkpoint.get('not_improve_counter', None)
 
         if checkpoint.get('scheduler_state_dict', None) != None:
             scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -271,6 +291,7 @@ if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
         print(f"Error loading checkpoint: {e}. Starting from scratch.")
         start_epoch = 1
         best_val_dice = None
+        not_improve_counter = None
 
 # ----------------------------------- MLFlow Configuration -----------------------------------
 load_dotenv()
@@ -283,10 +304,11 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.set_tag("ml.step", "model_training_evaluation")
     mlflow.log_param("model_info", model.model_info)
     mlflow.log_param("start_epoch", start_epoch)
+    mlflow.log_param("optimizer", OPTIMIZER_NAME)
     mlflow.log_param("target_epoch", NUM_EPOCHS)
     mlflow.log_param("data_dir", ROOT_DIR)
     mlflow.log_param("batch_size", BATCH_SIZE)
-    mlflow.log_param("learning_rate", LR)
+    mlflow.log_param("start_learning_rate", LR)
     mlflow.log_param("patience", PATIENCE)
     mlflow.log_param("val_split", VAL_SPLIT)
     mlflow.log_param("se_reduction_rate", SE_REDUCTION)
@@ -311,7 +333,8 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
         best_save_path=BEST_CHECKPOINT_PATH,
         last_save_path=LAST_CHECKPOINT_PATH,
         patience=PATIENCE,
-        best_val_dice=best_val_dice
+        best_val_dice=best_val_dice,
+        not_improve_counter=not_improve_counter
         )
 
 if report is not None:

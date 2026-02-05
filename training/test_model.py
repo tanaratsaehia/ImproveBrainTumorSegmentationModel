@@ -135,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument(
         'model_name',
         type=str,
-        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_hybrid", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_hybrid", "u_net_res", "u_net_ag_aspp", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
         help="Name of the architecture to use. Options: %(choices)s"
     )
     parser.add_argument(
@@ -188,6 +188,8 @@ if __name__ == '__main__':
 # u_net_ag training_results/checkpoints_U-Net_AG/best_checkpoint.pth
 # u_net_aspp training_results/checkpoints_U-Net_ASPP/best_checkpoint.pth
 # u_net_hybrid training_results/checkpoints_Hybrid_MDGR_FRD_UNet/best_checkpoint.pth
+# u_net_ag_aspp training_results/checkpoints_U-UNet_AG_ASPP/best_checkpoint.pth
+# u_net_res training_results/checkpoints_ResUNet_AG_ASPP_DS/best_checkpoint.pth
 
 # bipyramid training_results/checkpoints_U-Net_BiPyramid/best_checkpoint.pth
 # bipyramid_se training_results/checkpoints_U-Net_BiPyramid_SE/best_checkpoint.pth
