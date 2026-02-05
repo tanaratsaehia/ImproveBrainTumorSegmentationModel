@@ -302,7 +302,7 @@ mlflow.set_experiment(f"BrainTumor {model.model_name} Training")
 # ----------------------------------- Training -----------------------------------
 with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.set_tag("ml.step", "model_training_evaluation")
-    mlflow.log_param("model_info", model.model_info)
+    mlflow.log_params(model.model_info)
     mlflow.log_param("start_epoch", start_epoch)
     mlflow.log_param("optimizer", OPTIMIZER_NAME)
     mlflow.log_param("target_epoch", NUM_EPOCHS)
