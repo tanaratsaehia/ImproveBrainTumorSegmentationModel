@@ -17,5 +17,10 @@
         PP
             u_net_hybrid ฝึกที่ factor = 0.1
             u_net_res ฝึกที่ factor = 0.1 ตัวนี้มี deepsupervision ให้เป็น 1.0 (Main), 0.3 (DS4), 0.2 (DS3), 0.1 (DS2)
-
     midterm นำเสนอวันที่ 22-23 มกราคม 2569
+
+
+    After midterm exam
+    การทดลองครั้งที่ 1
+        Oil: U-Net4Layer(adam), U-NetRes(AdamW), UNetRes4Layer(AdamW)
+        PP: ParallelShadowUNet4Layer(AdamW), ParallelShadowUNetbase32(AdamW), ParallelShadowUNet(AdamW)

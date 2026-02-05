@@ -31,8 +31,9 @@ parser.add_argument(
     'model_name',
     type=str,
     choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
-             "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", "bipyramid_se", 
-             "bipyramid_di", "bipyramid_se_di"],
+             "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", 
+             "bipyramid_se", "bipyramid_di", "bipyramid_se_di", "u_net_4layer", "u_net_shadow_4layer", 
+             "u_net_shadow_base32", "u_net_shadow_full"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -188,6 +189,8 @@ val_loader = DataLoader(
 model = None
 if MODEL_NAME == "u_net":
     model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_4layer":
+    model = UNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_se":
     model = UNetSE(in_channels=4, num_classes=NUM_CLASSES, 
                    reduction=SE_REDUCTION)
@@ -221,6 +224,13 @@ elif MODEL_NAME == "bipyramid_di":
 elif MODEL_NAME == "bipyramid_se_di":
     model = UNetBiPyramidSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                               reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+
+elif MODEL_NAME == "u_net_shadow_4layer":
+    model = ParallelShadowUNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_shadow_base32":
+    model = ParallelShadowUNetbase32(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_shadow_full":
+    model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
 else:
     print("ERROR: Model name miss match!")
     time.sleep(10)
