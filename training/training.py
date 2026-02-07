@@ -31,8 +31,9 @@ parser.add_argument(
     'model_name',
     type=str,
     choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
-             "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", "bipyramid_se", 
-             "bipyramid_di", "bipyramid_se_di"],
+             "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", 
+             "bipyramid_se", "bipyramid_di", "bipyramid_se_di", "u_net_4layer", "u_net_shadow_4layer", 
+             "u_net_shadow_base32", "u_net_shadow_full"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -75,7 +76,7 @@ parser.add_argument(
 parser.add_argument(
     '--epochs',
     type=int,
-    default=100,
+    default=125,
     help=f"Number of training epochs (default: 100)"
 )
 parser.add_argument(
@@ -103,7 +104,7 @@ parser.add_argument(
 parser.add_argument(
     '--patience',
     type=int,
-    default=7,
+    default=25,
     help="Patience for early stoping (default 5)."
 )
 parser.add_argument(
@@ -188,6 +189,8 @@ val_loader = DataLoader(
 model = None
 if MODEL_NAME == "u_net":
     model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_4layer":
+    model = UNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_se":
     model = UNetSE(in_channels=4, num_classes=NUM_CLASSES, 
                    reduction=SE_REDUCTION)
@@ -221,6 +224,13 @@ elif MODEL_NAME == "bipyramid_di":
 elif MODEL_NAME == "bipyramid_se_di":
     model = UNetBiPyramidSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                               reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+
+elif MODEL_NAME == "u_net_shadow_4layer":
+    model = ParallelShadowUNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_shadow_base32":
+    model = ParallelShadowUNetbase32(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_shadow_full":
+    model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
 else:
     print("ERROR: Model name miss match!")
     time.sleep(10)
@@ -237,7 +247,7 @@ else:
     sys.exit(1)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3) # max mode for dice | min mode for loss
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=10, threshold=1e-3) # max mode for dice | min mode for loss
 # optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
 
 TRAIN_RESULT_PATH = 'training_results'
@@ -250,6 +260,7 @@ print(f"---------------------------\n")
 
 start_epoch = 1
 best_val_dice = None
+not_improve_counter = None
 if args.resume and os.path.exists(LAST_CHECKPOINT_PATH):
     try:
         if LOAD_BEST:
@@ -302,7 +313,7 @@ mlflow.set_experiment(f"BrainTumor {model.model_name} Training")
 # ----------------------------------- Training -----------------------------------
 with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.set_tag("ml.step", "model_training_evaluation")
-    mlflow.log_param("model_info", model.model_info)
+    mlflow.log_params(model.model_info)
     mlflow.log_param("start_epoch", start_epoch)
     mlflow.log_param("optimizer", OPTIMIZER_NAME)
     mlflow.log_param("target_epoch", NUM_EPOCHS)

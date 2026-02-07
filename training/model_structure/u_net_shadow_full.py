@@ -128,7 +128,7 @@ class ParallelShadowUNet(nn.Module):
 
 # --- Test กับ Input ที่ระบุ ---
 if __name__ == "__main__":
-    model = ParallelShadowUNet(n_channels=4, n_classes=4)
+    model = ParallelShadowUNet(in_channels=4, num_classes=4)
     test_input = torch.randn(1, 4, 182, 218)
     output = model(test_input)
     print(f"Input Shape: {test_input.shape}")

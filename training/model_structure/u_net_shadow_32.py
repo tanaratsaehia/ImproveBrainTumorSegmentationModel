@@ -132,7 +132,8 @@ class ParallelShadowUNetbase32(nn.Module):
         return self.final_conv(refined)
 
 # --- Test ---
-model = ParallelShadowUNetbase32(n_channels=4, n_classes=3)
-test_input = torch.randn(1, 4, 182, 218)
-output = model(test_input)
-print(f"Output Shape: {output.shape}") # Should be [1, 3, 182, 218]
+if __name__ == "__main__":
+    model = ParallelShadowUNetbase32(in_channels=4, num_classes=3)
+    test_input = torch.randn(1, 4, 182, 218)
+    output = model(test_input)
+    print(f"Output Shape: {output.shape}") # Should be [1, 3, 182, 218]
