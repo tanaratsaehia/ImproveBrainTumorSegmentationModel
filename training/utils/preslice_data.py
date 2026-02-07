@@ -76,6 +76,7 @@ if __name__ == "__main__":
     preprocess_to_2d(original_path, output_path)
 
 # ./BraTS-Datasets/Trainset BraTS-Datasets
+# ./BraTS-Datasets/Valset BraTS-Datasets
 
 # ./BraTS-Datasets/Testset/low_grade BraTS-Datasets/Testset
 # ./BraTS-Datasets/Testset/high_grade BraTS-Datasets/Testset

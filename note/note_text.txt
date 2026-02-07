@@ -21,6 +21,31 @@
 
 
     After midterm exam
-    การทดลองครั้งที่ 1
-        Oil: U-Net4Layer(adam), U-NetRes(AdamW), UNetRes4Layer(AdamW)
-        PP: ParallelShadowUNet4Layer(AdamW), ParallelShadowUNetbase32(AdamW), ParallelShadowUNet(AdamW)
+        การทดลองครั้งที่ 1
+            Oil: U-Net4Layer(adam), U-NetRes(AdamW), UNetRes4Layer(AdamW)
+            PP: ParallelShadowUNet4Layer(AdamW), ParallelShadowUNetbase32(AdamW), 
+        
+        การทดลองครั้งที่ 2
+            Oil:
+                1. U-net            | ADAMW | start lr = 0.0002 | u_net.py
+                2. U-net + ASPP     | ADAMW | start lr = 0.0002 | u_net_aspp.py
+                3. U-net + AG       | ADAMW | start lr = 0.0002 | u_net_ag.py
+            PP:
+                4. U-net + SE       | ADAMW | start lr = 0.0002 | u_net_se.py
+                5. U-net bipyramid  | ADAMW | start lr = 0.0002 | u_net_bipyramid.py
+                6. U-net Res        | ADAMW | start lr = 0.0002 | u_net_res.py
+            Big:
+                7. U-net Shadow32   | ADAMW | start lr = 0.0002 | u_net_shadow_32.py
+                8. U-net + SCSE     | ADAMW | start lr = 0.0002 | u_net_scse.py
+                9. U-net + DenseASPP| ADAMW | start lr = 0.0002 | u_net_dense_aspp.py
+
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, 
+                mode='max',
+                factor=0.5,
+                patience=10,
+                min_lr=1e-6,
+                verbose=True
+            )
+            ADAMW : weight decay = 1e-2 (0.01)
+            batch_size = 16

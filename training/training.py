@@ -33,7 +33,7 @@ parser.add_argument(
     choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
              "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", 
              "bipyramid_se", "bipyramid_di", "bipyramid_se_di", "u_net_4layer", "u_net_shadow_4layer", 
-             "u_net_shadow_base32", "u_net_shadow_full"],
+             "u_net_shadow_base32", "u_net_shadow_full", "u_net_dense_aspp", "u_net_scse"],
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
@@ -44,10 +44,16 @@ parser.add_argument(
     help="Name of the optimizer to use. Options: %(choices)s"
 )
 parser.add_argument(
-    '--data_dir',
+    '--train_data_dir',
     type=str,
     default='SLICED_Trainset',
-    help="Path to the root directory containing the BraTS datasets."
+    help="Path to the train directory containing the BraTS datasets."
+)
+parser.add_argument(
+    '--val_data_dir',
+    type=str,
+    default='SLICED_Valset',
+    help="Path to the validate directory containing the BraTS datasets."
 )
 parser.add_argument(
     '--batch_size',
@@ -70,20 +76,14 @@ parser.add_argument(
 parser.add_argument(
     '--lr',
     type=float,
-    default=4e-4,
-    help=f"Learning rate (default: 1e-4)"
+    default=2e-4,
+    help=f"Learning rate (default: 2e-4)"
 )
 parser.add_argument(
     '--epochs',
     type=int,
     default=125,
     help=f"Number of training epochs (default: 100)"
-)
-parser.add_argument(
-    '--val_split',
-    type=float,
-    default=0.25,
-    help=f"Fraction of data to use for validation (default: 0.25)"
 )
 parser.add_argument(
     '--num_classes',
@@ -133,13 +133,13 @@ MODEL_NAME     = args.model_name
 OPTIMIZER_NAME = args.optim
 SE_REDUCTION   = args.se_reduction
 DILATION_RATE  = args.dilation_rate
-ROOT_DIR       = os.path.join('BraTS-Datasets', args.data_dir)
+TRAIN_DATA_DIR = os.path.join('BraTS-Datasets', args.train_data_dir)
+VAL_DATA_DIR   = os.path.join('BraTS-Datasets', args.val_data_dir)
 BATCH_SIZE     = args.batch_size
 LR             = args.lr
 NUM_EPOCHS     = args.epochs
 LOSS_CE_WEIGHT   = args.loss_ce_weight
 LOSS_DICE_WEIGHT = args.loss_dice_weight
-VAL_SPLIT     = args.val_split
 NUM_CLASSES   = args.num_classes
 PATIENCE      = args.patience
 NUM_WORKERS   = 2
@@ -147,12 +147,12 @@ LOAD_BEST     = args.load_best
 DEVICE        = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"\n\n----- Configuration -----")
-print(f"Root data directory: {ROOT_DIR}")
+print(f"Train data directory: {TRAIN_DATA_DIR}")
+print(f"Validate data directory: {VAL_DATA_DIR}")
 print(f"Batch Size: {BATCH_SIZE}")
 print(f"Learning Rate: {LR}")
 print(f"Epochs: {NUM_EPOCHS}")
 print(f"Patience: {PATIENCE}")
-print(f"Validation Split: {VAL_SPLIT}")
 print(f"Crossentropy loss weight: {LOSS_CE_WEIGHT}")
 print(f"Dice loss weight: {LOSS_DICE_WEIGHT}")
 print(f"Num Workers: {NUM_WORKERS}")
@@ -160,28 +160,29 @@ print(f"Num Classes: {NUM_CLASSES}")
 print(f"Training device: {DEVICE}")
 
 # ----------------------------------- Data preparation -----------------------------------
-if not os.path.isdir(ROOT_DIR):
-    sys.exit(f"Error: Directory not found at {ROOT_DIR}")
+if not os.path.isdir(TRAIN_DATA_DIR) and not os.path.isdir(VAL_DATA_DIR):
+    sys.exit(f"Error: Directory not found at train or validate")
 
-full_dataset = BRATSDataset2D(
-    csv_path    = os.path.join(ROOT_DIR, 'dataset_mapper.csv'),
-    root_dir    = ROOT_DIR,
+train_dataset = BRATSDataset2D(
+    csv_path    = os.path.join(TRAIN_DATA_DIR, 'dataset_mapper.csv'),
+    root_dir    = TRAIN_DATA_DIR,
+    transform   = None
+)
+val_dataset = BRATSDataset2D(
+    csv_path    = os.path.join(VAL_DATA_DIR, 'dataset_mapper.csv'),
+    root_dir    = VAL_DATA_DIR,
     transform   = None
 )
 
-print(f'Total data {len(full_dataset)} images.')
-
-n_val = int(len(full_dataset) * VAL_SPLIT)
-n_train = len(full_dataset) - n_val
-train_ds, val_ds = random_split(full_dataset, [n_train, n_val])
-print(f"Train: {n_train} imgs | Validate: {n_val} imgs")
+print(f'Total data {len(train_dataset) + len(val_dataset)} images.')
+print(f"Train: {len(train_dataset)} imgs | Validate: {len(val_dataset)} imgs")
 
 train_loader = DataLoader(
-    train_ds, batch_size=BATCH_SIZE, shuffle=True,
+    train_dataset, batch_size=BATCH_SIZE, shuffle=True,
     num_workers=NUM_WORKERS, pin_memory=False
 )
 val_loader = DataLoader(
-    val_ds, batch_size=BATCH_SIZE, shuffle=False,
+    val_dataset, batch_size=BATCH_SIZE, shuffle=False,
     num_workers=NUM_WORKERS, pin_memory=False
 )
 
@@ -231,6 +232,12 @@ elif MODEL_NAME == "u_net_shadow_base32":
     model = ParallelShadowUNetbase32(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_shadow_full":
     model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
+
+# "u_net_dense_aspp", "u_net_scse"
+elif MODEL_NAME == "u_net_dense_aspp":
+    model = UNetDenseASPP(in_channels=4, num_classes=NUM_CLASSES)
+elif MODEL_NAME == "u_net_scse":
+    model = UNet_scSE(in_channels=4, num_classes=NUM_CLASSES)
 else:
     print("ERROR: Model name miss match!")
     time.sleep(10)
@@ -241,14 +248,19 @@ model.to(DEVICE)
 if OPTIMIZER_NAME == "adam":
     optimizer = optim.Adam(model.parameters(), lr=LR)
 elif OPTIMIZER_NAME == "adam_w":
-    optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-5)
+    optimizer = optim.AdamW(model.parameters(), lr=LR, weight_decay=1e-2)
 else:
     print(f"Unkonw optimizer '{OPTIMIZER_NAME}'")
     sys.exit(1)
 
 criterion = HybridLoss(NUM_CLASSES, ce_weight=LOSS_CE_WEIGHT, dice_weight=LOSS_DICE_WEIGHT)
-scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=10, threshold=1e-3) # max mode for dice | min mode for loss
-# optimizer, mode='max', factor=0.1, patience=int(PATIENCE/2), threshold=1e-3, cooldown=default, min_lr=default
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, 
+    mode='max', # max mode for dice | min mode for loss
+    factor=0.5,
+    patience=10,
+    min_lr=1e-6
+) 
 
 TRAIN_RESULT_PATH = 'training_results'
 CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
@@ -317,11 +329,11 @@ with mlflow.start_run(run_name=f"{model.model_name}_start-epoch{start_epoch}"):
     mlflow.log_param("start_epoch", start_epoch)
     mlflow.log_param("optimizer", OPTIMIZER_NAME)
     mlflow.log_param("target_epoch", NUM_EPOCHS)
-    mlflow.log_param("data_dir", ROOT_DIR)
+    mlflow.log_param("train_data_dir", TRAIN_DATA_DIR)
+    mlflow.log_param("val_data_dir", VAL_DATA_DIR)
     mlflow.log_param("batch_size", BATCH_SIZE)
     mlflow.log_param("start_learning_rate", LR)
     mlflow.log_param("patience", PATIENCE)
-    mlflow.log_param("val_split", VAL_SPLIT)
     mlflow.log_param("se_reduction_rate", SE_REDUCTION)
     mlflow.log_param("dilation_rate", DILATION_RATE)
     mlflow.log_param("random_seed", SEED)

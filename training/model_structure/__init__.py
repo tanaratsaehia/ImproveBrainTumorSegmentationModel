@@ -21,4 +21,7 @@ from .u_net_shadow_4layer import ParallelShadowUNet4Layer
 from .u_net_shadow_32 import ParallelShadowUNetbase32
 from .u_net_shadow_full import ParallelShadowUNet
 
-__version__ = "1.1.4"
+from .u_net_dense_aspp import UNetDenseASPP
+from .u_net_scse import UNet_scSE
+
+__version__ = "1.1.5"

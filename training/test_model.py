@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 import random
 import mlflow
@@ -26,6 +27,8 @@ def main(args):
     model = None
     if MODEL_NAME == "u_net":
         model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_4layer":
+        model = UNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
     elif MODEL_NAME == "u_net_se":
         model = UNetSE(in_channels=4, num_classes=NUM_CLASSES, 
                     reduction=SE_REDUCTION)
@@ -45,6 +48,8 @@ def main(args):
         model = UNetAG_ASPP(in_channels=4, num_classes=NUM_CLASSES)
     elif MODEL_NAME == "u_net_res":
         model = UNetRes(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_res_4layer":
+        model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
     elif MODEL_NAME == "bipyramid":
         model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
@@ -57,6 +62,17 @@ def main(args):
     elif MODEL_NAME == "bipyramid_se_di":
         model = UNetBiPyramidSeDi(in_channels=4, num_classes=NUM_CLASSES, 
                                 reduction=SE_REDUCTION, dilations_rate=DILATION_RATE)
+
+    elif MODEL_NAME == "u_net_shadow_4layer":
+        model = ParallelShadowUNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_shadow_base32":
+        model = ParallelShadowUNetbase32(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_shadow_full":
+        model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
+    else:
+        print("ERROR: Model name miss match!")
+        time.sleep(10)
+        os._exit(0)
     print(f"\nModel info: {model.model_info}")
     criterion = HybridLoss(NUM_CLASSES, ce_weight=0.5, dice_weight=0.5) 
     
@@ -135,7 +151,10 @@ if __name__ == '__main__':
     parser.add_argument(
         'model_name',
         type=str,
-        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", "u_net_hybrid", "u_net_res", "u_net_ag_aspp", "bipyramid", "bipyramid_se", "bipyramid_di", "bipyramid_se_di"],
+        choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
+                "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", 
+                "bipyramid_se", "bipyramid_di", "bipyramid_se_di", "u_net_4layer", "u_net_shadow_4layer", 
+                "u_net_shadow_base32", "u_net_shadow_full"],
         help="Name of the architecture to use. Options: %(choices)s"
     )
     parser.add_argument(
@@ -195,3 +214,12 @@ if __name__ == '__main__':
 # bipyramid_se training_results/checkpoints_U-Net_BiPyramid_SE/best_checkpoint.pth
 # bipyramid_di training_results/checkpoints_U-Net_BiPyramid_DI1212/best_checkpoint.pth
 # bipyramid_se_di training_results/checkpoints_U-Net_BiPyramid_SE_DI1212/best_checkpoint.pth
+
+
+# u_net_4layer training_results/checkpoints_U-Net_4Layer/best_checkpoint.pth
+# u_net_res training_results/checkpoints_ResUNet_AG_ASPP_DS/best_checkpoint.pth
+# u_net_res_4layer training_results/checkpoints_ResUNet_4Layer_AG_ASPP_DS/best_checkpoint.pth
+
+# u_net_shadow_4layer training_results/checkpoints_ParallelShadowUNet_ASPP_SE_64_4layer/best_checkpoint.pth
+# u_net_shadow_base32 training_results/checkpoints_ParallelShadowUNet_ASPP_SE_32/best_checkpoint.pth
+# u_net_shadow_full training_results/checkpoints_ParallelShadowUNet_ASPP_SE_64/best_checkpoint.pth
