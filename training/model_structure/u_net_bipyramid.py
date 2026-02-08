@@ -25,6 +25,8 @@ class UNetBiPyramid(nn.Module):
         if self.deep_supervision:
             self.model_info['deep_supervision_loss'] = [1.0, 0.3, 0.2]
             self.model_info['description'] = "Add deep supervision to help tuning loss at standard decoder(out 2) and right pyramid(out 3)"
+        else:
+            self.model_info['description'] = "Original BiPyramid No deep supervision"
 
         # --- 1. Encoder (Downsampling) ---
         self.enc1 = double_conv(in_channels, 64)

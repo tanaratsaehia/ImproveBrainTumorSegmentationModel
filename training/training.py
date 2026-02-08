@@ -215,7 +215,7 @@ elif MODEL_NAME == "u_net_res_4layer":
     model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
 elif MODEL_NAME == "bipyramid":
-    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
+    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=False)
 elif MODEL_NAME == "bipyramid_se":
     model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                             reduction=SE_REDUCTION)
@@ -233,7 +233,6 @@ elif MODEL_NAME == "u_net_shadow_base32":
 elif MODEL_NAME == "u_net_shadow_full":
     model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
 
-# "u_net_dense_aspp", "u_net_scse"
 elif MODEL_NAME == "u_net_dense_aspp":
     model = UNetDenseASPP(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_scse":
