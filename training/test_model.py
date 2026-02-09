@@ -52,7 +52,7 @@ def main(args):
         model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
     elif MODEL_NAME == "bipyramid":
-        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
+        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=False)
     elif MODEL_NAME == "bipyramid_se":
         model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                                 reduction=SE_REDUCTION)
