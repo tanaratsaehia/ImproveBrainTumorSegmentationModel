@@ -37,24 +37,30 @@ parser.add_argument(
     help="Name of the architecture to use. Options: %(choices)s"
 )
 parser.add_argument(
+    '--root_data_dir',
+    type=str,
+    default='BraTS-Datasets',
+    help="Path to data containing the BraTS datasets."
+)
+parser.add_argument(
     '--optim',
     default="adam_w",
     type=str,
     choices=["adam", "adam_w"],
     help="Name of the optimizer to use. Options: %(choices)s"
 )
-parser.add_argument(
-    '--train_data_dir',
-    type=str,
-    default='SLICED_Trainset',
-    help="Path to the train directory containing the BraTS datasets."
-)
-parser.add_argument(
-    '--val_data_dir',
-    type=str,
-    default='SLICED_Valset',
-    help="Path to the validate directory containing the BraTS datasets."
-)
+# parser.add_argument(
+#     '--train_data_dir',
+#     type=str,
+#     default='SLICED_Trainset',
+#     help="Path to the train directory containing the BraTS datasets."
+# )
+# parser.add_argument(
+#     '--val_data_dir',
+#     type=str,
+#     default='SLICED_Valset',
+#     help="Path to the validate directory containing the BraTS datasets."
+# )
 parser.add_argument(
     '--batch_size',
     type=int,
@@ -133,8 +139,10 @@ MODEL_NAME     = args.model_name
 OPTIMIZER_NAME = args.optim
 SE_REDUCTION   = args.se_reduction
 DILATION_RATE  = args.dilation_rate
-TRAIN_DATA_DIR = os.path.join('BraTS-Datasets', args.train_data_dir)
-VAL_DATA_DIR   = os.path.join('BraTS-Datasets', args.val_data_dir)
+# TRAIN_DATA_DIR = args.train_data_dir
+# VAL_DATA_DIR   = args.val_data_dir
+TRAIN_DATA_DIR = os.path.join(args.root_data_dir, 'SLICED_Trainset')
+VAL_DATA_DIR   = os.path.join(args.root_data_dir, 'SLICED_Valset')
 BATCH_SIZE     = args.batch_size
 LR             = args.lr
 NUM_EPOCHS     = args.epochs
@@ -215,7 +223,7 @@ elif MODEL_NAME == "u_net_res_4layer":
     model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
 elif MODEL_NAME == "bipyramid":
-    model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=False)
+    model = UNetBiPyramid(in_channels=3, num_classes=NUM_CLASSES, deep_supervision=True)
 elif MODEL_NAME == "bipyramid_se":
     model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                             reduction=SE_REDUCTION)
@@ -379,3 +387,7 @@ if torch.cuda.is_available():
     torch.cuda.synchronize()
 
 os._exit(0)
+
+# Other-Datasets/Retinal-Images/train
+# Other-Datasets/Retinal-Images/test
+# bipyramid --root_data_dir Other-Datasets/Retinal-Images --num_classes 2
