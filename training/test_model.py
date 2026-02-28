@@ -52,7 +52,7 @@ def main(args):
         model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
     elif MODEL_NAME == "bipyramid":
-        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=True)
+        model = UNetBiPyramid(in_channels=4, num_classes=NUM_CLASSES, deep_supervision=False)
     elif MODEL_NAME == "bipyramid_se":
         model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                                 reduction=SE_REDUCTION)
@@ -69,6 +69,11 @@ def main(args):
         model = ParallelShadowUNetbase32(in_channels=4, num_classes=NUM_CLASSES)
     elif MODEL_NAME == "u_net_shadow_full":
         model = ParallelShadowUNet(in_channels=4, num_classes=NUM_CLASSES)
+
+    elif MODEL_NAME == "u_net_dense_aspp":
+        model = UNetDenseASPP(in_channels=4, num_classes=NUM_CLASSES)
+    elif MODEL_NAME == "u_net_scse":
+        model = UNet_scSE(in_channels=4, num_classes=NUM_CLASSES)
     else:
         print("ERROR: Model name miss match!")
         time.sleep(10)
@@ -154,7 +159,7 @@ if __name__ == '__main__':
         choices=["u_net", "u_net_se", "u_net_di", "u_net_se_di", "u_net_ag", "u_net_aspp", 
                 "u_net_ag_aspp", "u_net_res", "u_net_res_4layer", "u_net_hybrid", "bipyramid", 
                 "bipyramid_se", "bipyramid_di", "bipyramid_se_di", "u_net_4layer", "u_net_shadow_4layer", 
-                "u_net_shadow_base32", "u_net_shadow_full"],
+                "u_net_shadow_base32", "u_net_shadow_full", "u_net_dense_aspp", "u_net_scse"],
         help="Name of the architecture to use. Options: %(choices)s"
     )
     parser.add_argument(
@@ -223,3 +228,6 @@ if __name__ == '__main__':
 # u_net_shadow_4layer training_results/checkpoints_ParallelShadowUNet_ASPP_SE_64_4layer/best_checkpoint.pth
 # u_net_shadow_base32 training_results/checkpoints_ParallelShadowUNet_ASPP_SE_32/best_checkpoint.pth
 # u_net_shadow_full training_results/checkpoints_ParallelShadowUNet_ASPP_SE_64/best_checkpoint.pth
+
+# u_net_scse training_results/checkpoints_U-Net_scSE/best_checkpoint.pth
+# u_net_dense_aspp training_results/checkpoints_U-Net_DenseASPP/best_checkpoint.pth

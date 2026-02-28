@@ -30,6 +30,7 @@
                 1. U-net            | ADAMW | start lr = 0.0002 | u_net.py
                 2. U-net + ASPP     | ADAMW | start lr = 0.0002 | u_net_aspp.py
                 3. U-net + AG       | ADAMW | start lr = 0.0002 | u_net_ag.py
+                x. U-net bipyramid no deep supervision  | ADAMW | start lr = 0.0002 | u_net_bipyramid.py
             PP:
                 4. U-net + SE       | ADAMW | start lr = 0.0002 | u_net_se.py
                 5. U-net bipyramid  | ADAMW | start lr = 0.0002 | u_net_bipyramid.py
