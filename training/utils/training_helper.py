@@ -114,7 +114,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
             # Remap label '4' -> '3' for 4 classes (0, 1, 2, 3)
             start_ai_compute_time = time.time()
             masks = masks.clone()
-            masks[masks == 4] = 3
+            # masks[masks == 4] = 3
 
             optimizer.zero_grad()
             outputs = model(imgs)

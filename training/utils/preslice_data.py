@@ -2,7 +2,6 @@ import os
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import argparse
 from pathlib import Path
 
@@ -80,3 +79,4 @@ if __name__ == "__main__":
 
 # ./BraTS-Datasets/Testset/low_grade BraTS-Datasets/Testset
 # ./BraTS-Datasets/Testset/high_grade BraTS-Datasets/Testset
+
