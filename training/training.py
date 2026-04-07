@@ -17,7 +17,7 @@ from mlflow.artifacts import download_artifacts
 from dotenv import load_dotenv
 
 from utils.training_helper import train_model, save_checkpoint
-from utils.data_helper import BRATSDataset2D
+from utils.data_helper import BRATSDataset2D, UAVidDataset2D
 from model_structure import *
 from torch.utils.data import DataLoader, random_split
 
@@ -126,6 +126,7 @@ parser.add_argument(
     help="Dice loss weight (default 0.5)."
 )
 
+
 args = parser.parse_args()
 
 SEED = 42
@@ -171,6 +172,16 @@ print(f"Training device: {DEVICE}")
 if not os.path.isdir(TRAIN_DATA_DIR) and not os.path.isdir(VAL_DATA_DIR):
     sys.exit(f"Error: Directory not found at train or validate")
 
+# train_dataset = UAVidDataset2D(
+#     csv_path    = os.path.join(TRAIN_DATA_DIR, 'dataset_mapper.csv'),
+#     root_dir    = TRAIN_DATA_DIR,
+#     transform   = None
+# )
+# val_dataset = UAVidDataset2D(
+#     csv_path    = os.path.join(VAL_DATA_DIR, 'dataset_mapper.csv'),
+#     root_dir    = VAL_DATA_DIR,
+#     transform   = None
+# )
 train_dataset = BRATSDataset2D(
     csv_path    = os.path.join(TRAIN_DATA_DIR, 'dataset_mapper.csv'),
     root_dir    = TRAIN_DATA_DIR,
@@ -197,7 +208,7 @@ val_loader = DataLoader(
 # ----------------------------------- Create Model -----------------------------------
 model = None
 if MODEL_NAME == "u_net":
-    model = UNet(in_channels=4, num_classes=NUM_CLASSES)
+    model = UNet(in_channels=3, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_4layer":
     model = UNet4Layer(in_channels=4, num_classes=NUM_CLASSES)
 elif MODEL_NAME == "u_net_se":
@@ -223,7 +234,7 @@ elif MODEL_NAME == "u_net_res_4layer":
     model = UNetRes4Layer(in_channels=4, num_classes=NUM_CLASSES)
 
 elif MODEL_NAME == "bipyramid":
-    model = UNetBiPyramid(in_channels=3, num_classes=NUM_CLASSES, deep_supervision=True)
+    model = UNetBiPyramid(in_channels=3, num_classes=NUM_CLASSES, deep_supervision=False)
 elif MODEL_NAME == "bipyramid_se":
     model = UNetBiPyramidSE(in_channels=4, num_classes=NUM_CLASSES, 
                             reduction=SE_REDUCTION)
@@ -270,7 +281,7 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
 ) 
 
 TRAIN_RESULT_PATH = 'training_results'
-CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_{model.model_name}')
+CHECKPOINT_DIR = os.path.join(TRAIN_RESULT_PATH, f'checkpoints_temp_{model.model_name}')
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 LAST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'last_checkpoint.pth')
 BEST_CHECKPOINT_PATH = os.path.join(CHECKPOINT_DIR, 'best_checkpoint.pth')
@@ -388,6 +399,7 @@ if torch.cuda.is_available():
 
 os._exit(0)
 
-# Other-Datasets/Retinal-Images/train
-# Other-Datasets/Retinal-Images/test
+# u_net --resume --root_data_dir Other-Datasets/Retinal-Images --num_classes 2
 # bipyramid --root_data_dir Other-Datasets/Retinal-Images --num_classes 2
+# bipyramid --root_data_dir Other-Datasets/UAVid --num_classes 8
+# u_net --root_data_dir Other-Datasets/UAVid --num_classes 8 --batch_size 4
